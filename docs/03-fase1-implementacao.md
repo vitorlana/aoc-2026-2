@@ -23,6 +23,7 @@ O roteiro com o raciocínio passo a passo está em [`02-fase1-decoder-encoder.md
 8. [Verificação](#8-verificação)
 9. [Resultados de síntese](#9-resultados-de-síntese)
 10. [Limitações e próximos passos](#10-limitações-e-próximos-passos)
+11. [Ver as ondas e o circuito](#11-ver-as-ondas-e-o-circuito)
 
 ---
 
@@ -34,12 +35,15 @@ rtl/
   takum_decoder.v     palavra takum de N bits -> formato interno
   takum_encoder.v     formato interno alargado -> palavra takum (arredonda e satura)
 tb/
+  tb_demo.v           demonstração para ver as ondas (grava build/demo.vcd)
+  demo.tcl            script do GTKWave: sinais, grupos e formatos da demonstração
   takum_ref.vh        modelo de referência (funções com real; só testbench)
   tb_ref.v            testa o próprio modelo (valores conhecidos, negação, monotonicidade)
   tb_decoder.v        decoder: exaustivo T8/T16, aleatório T32
   tb_roundtrip.v      encoder(decoder(t)) == t
   tb_encoder.v        encoder por propriedades (saturação, sinal, vizinho mais próximo, empates)
-Makefile              test, lint, synth, clean
+Makefile              test, lint, synth, demo, waves, schematic, clean
+docs/img/             capturas das ondas e esquemáticos (SVG e PNG)
 ```
 
 `build/` (gerado) e `*.vcd` estão no `.gitignore`.
@@ -68,6 +72,8 @@ Na raiz do repositório:
 make test          # compila e roda os 4 testbenches
 make lint          # Verilator -Wall para N = 8, 16, 32
 make synth         # Yosys: células e LUT6 por módulo e tamanho (salva em build/synth.txt)
+make waves         # simula a demonstração e abre as ondas no GTKWave (§11)
+make schematic     # desenha o circuito em build/sch/*.svg (§11)
 make clean
 ```
 
@@ -335,3 +341,105 @@ Como ler para o artigo:
   `ref_value(a) * ref_value(b)` e `ref_value(a) + ref_value(b)` em `real`. Isso é exato para T8 e T16; em T32
   o produto (até 56 bits de significando) e algumas somas passam dos 53 bits do `real`, então lá verifiquem
   por propriedades (vizinhança e sinal, como na §8.2) em vez de igualdade.
+
+---
+
+## 11. Ver as ondas e o circuito
+
+### 11.1 Formas de onda
+
+```bash
+make waves                                   # simula e abre o GTKWave
+# ou, em dois passos:
+make demo                                    # grava build/demo.vcd
+gtkwave build/demo.vcd -S tb/demo.tcl        # abre com os sinais arrumados
+```
+
+O `tb/tb_demo.v` não é um teste de aprovação: ele passa por casos escolhidos, um a cada 10 ns, e o sinal
+**`caso`** (formato ASCII) diz o que está na tela. O `tb/demo.tcl` adiciona os sinais em dois grupos e escolhe
+o formato de cada um (hexadecimal, binário, decimal com sinal). Para ver outro sinal interno, procure-o na
+árvore à esquerda do GTKWave (`tb_demo` → `dec` → `u_hdr` …) e arraste para a lista.
+
+**Parte 1 (0–120 ns): decoder → encoder em T8**
+
+![Ondas da parte 1: decoder](img/ondas-parte1-decoder.png)
+
+Como ler:
+
+| Caso | `t` | `h` (12 bits) | `r` | `exp` | `frac` | O que observar |
+|---|---|---|---|---|---|---|
+| 1 | `40` | `0100 0000 0000` | 0 | 0 | `000` | D = 1, R = 000 |
+| 1,125 | `41` | | 0 | 0 | `001` | o último bit é fração |
+| 2 | `48` | | 1 | 1 | `000` | R = 001: um bit de característica |
+| 8 | `50` | | 2 | 3 | `000` | `c = {1,00} − 1 = 3` |
+| 2^15 | `60` | | 4 | 15 | `000` | C passa do fim da palavra: ghost bits |
+| 0,9375 | `3F` | `0011 1111 0000` | 0 | −1 | `111` | D = 0 (menor que 1) |
+| −1 | `C0` | `0100 0000 0000` | 0 | 0 | `000` | `sign = 1`; `h` mostra a palavra **já negada** |
+| maior | `7F` | `0111 1111 0000` | 7 | 239 | `000` | os 4 bits de baixo de `h` são ghost bits |
+| menor | `01` | | 7 | −239 | `000` | |
+| zero, NaR | `00`, `80` | | | 0 | `000` | só as flags `is_zero` / `is_nar` sobem |
+
+Em todos os casos `t_back` (saída do encoder) é igual a `t`: a ida e volta funcionando.
+
+**Parte 2 (120–200 ns): o encoder arredondando**
+
+![Ondas da parte 2: encoder](img/ondas-parte2-encoder.png)
+
+A entrada `e_frac` tem 5 bits: 3 de fração + **guard** + **round**. `guard` e `rnd` são sinais internos do encoder
+(`rnd = 1` quando ele soma 1 na palavra).
+
+| Caso | `e_frac` | `guard` | `rnd` | `e_t` | O que observar |
+|---|---|---|---|---|---|
+| 1,0 exato | `000_00` | 0 | 0 | `40` | nada a arredondar |
+| 1,0625 | `000_10` | 1 | **0** | `40` | empate exato e último bit par: **fica** |
+| 1,1875 | `001_10` | 1 | **1** | `42` | empate e último bit ímpar: **sobe** para o par (1,25) |
+| 1,0625 + sticky | `000_10` | 1 | 1 | `41` | o sticky diz que passou do meio: sobe |
+| 1,96 | `111_11` | 1 | 1 | `48` | o vai-um atravessa a fração e muda o **regime**: vira 2,0 |
+| −1,1875 | `001_10` | 1 | 1 | `BE` | mesmo arredondamento, depois complemento de 2 (`−42` = `BE`) |
+| exp = 300 | | | | `7F` | satura no maior positivo |
+| exp = −300 | | (1) | (1) | `01` | satura no menor positivo; o `rnd` interno não importa porque a saturação de faixa tem prioridade |
+
+### 11.2 O circuito
+
+```bash
+make schematic              # build/sch/takum_hdr_dec.svg, takum_decoder.svg, takum_encoder.svg
+make schematic SCH_N=16     # o mesmo para T16
+```
+
+O Yosys lê o Verilog, faz a elaboração no nível RTL (`prep`) e o **netlistsvg** desenha. Se o netlistsvg não estiver
+instalado (`npm install -g netlistsvg`), o alvo usa o Graphviz do próprio Yosys (`show`), com desenho menos limpo.
+Abra os SVGs no navegador (dá para dar zoom sem perder qualidade). As versões em `docs/img/` são de T8.
+
+Nesse nível cada bloco é um operador do código: `$shl`/`$shr` são deslocadores, `+`, `−` e `$neg` são
+somadores/subtratores, os trapézios são multiplexadores, as barras pretas separam ou juntam fios de um barramento.
+
+**Cabeçalho de 12 bits (`takum_hdr_dec`)** — igual para qualquer N:
+
+![Esquemático do takum_hdr_dec](img/takum_hdr_dec.png)
+
+Da esquerda para a direita: `h[9:7]` (R) passa pelo inversor e pelo mux que escolhe entre R e ~R com `h[10]` (D) — é o `r`.
+`111 − r` controla o `$shr` que tira C da janela `h[6:0]`. O `$shl` faz `1 << r`; o subtrator gera a máscara.
+Os dois OUs formam `{1, C}` e `{1, ~C}`; um caminho subtrai 1, o outro passa pelo `$neg`, e o mux final escolhe pelo D.
+
+**Decoder (`takum_decoder`, T8)**:
+
+![Esquemático do takum_decoder](img/takum_decoder.png)
+
+Embaixo à esquerda, o inversor + somador (`+1`) com o mux é a **negação condicional**. A barra `0:3 / 4:11` junta
+os 8 bits com 4 zeros (os **ghost bits**) para formar `h`, que entra no bloco `takum_hdr_dec`. O `r` que sai dele
+soma com `101` (5) e controla o `$shl` da fração. À direita, o `$reduce_or` e as portas formam `is_zero`/`is_nar`,
+e os três muxes zeram as saídas nos casos especiais.
+
+**Encoder (`takum_encoder`, T8)**: [abrir o SVG](img/takum_encoder.svg) (largo; melhor no navegador).
+
+![Esquemático do takum_encoder](img/takum_encoder.png)
+
+Da esquerda para a direita: `exp` → `+1` ou `$neg` (o valor `a`); a fileira de comparadores `=` com a constante
+grande é o **priority encoder** (o Yosys transformou o `casez` numa tabela); os deslocadores montam a palavra longa;
+o `$reduce_or` com `sticky` e as portas formam o arredondamento; o somador `+` aplica o `rnd`; os muxes à direita fazem
+a saturação, o complemento de 2 (`+1` depois do inversor) e os casos zero/NaR. Embaixo, os comparadores `<` e `>`
+com `0x101` e `0xfe` são os testes `exp < −255` e `exp > 254`.
+
+> Para o artigo, os SVGs do cabeçalho e do decoder podem ir quase direto como figuras. O do encoder fica
+> melhor redesenhado como diagrama de blocos (o da §7), citando que foi conferido contra o esquemático.
+
