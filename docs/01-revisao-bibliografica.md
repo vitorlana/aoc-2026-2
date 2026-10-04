@@ -613,6 +613,37 @@ def takum_linear_decode(bits: int, n: int):
 Com ele verificamos, para **todos** os padrões de T8 e T16, que (a) a negação é o complemento
 de 2 e (b) a ordem dos valores é a ordem dos inteiros com sinal — as Propriedades 4 e 6 da §8.4.
 
+### 8.9 Takum logarítmico em detalhe
+
+> A versão HTML (`docs/revisao-bibliografica.html`) tem este conteúdo com laboratórios:
+> decodificador no modo logarítmico, calculadora com logaritmo gaussiano, experimento de
+> produtos escalares linear × log × IEEE e um assistente de decisão.
+
+**Ideia (LNS):** guardar o logaritmo do número em ponto fixo. Multiplicar vira somar (régua de cálculo).
+
+```
+Campos:   S | D | R | C | M          (S, D, R, C idênticos ao takum linear)
+m = M / 2^p                          mantissa = parte fracionária do log
+ℓ = (−1)^S × (c + m)                 valor logarítmico
+x = (−1)^S × √e^ℓ                    √e ≈ 1,6487   (ℓ = 2·ln|x|)
+```
+
+| Bits (8) | ℓ | Takum log | Takum linear |
+|---|---|---|---|
+| `0 1 000 000` | 0 | 1 | 1 |
+| `0 1 000 001` | 0,125 | ≈ 1,0645 | 1,125 |
+| `0 1 001 000` | 1 | √e ≈ 1,6487 | 2 |
+| `1 0 111 100` | 0,5 | −1,2840 | −1,5 |
+| `0 1 111 111` | 239 | ≈ 7,9×10⁵¹ | ≈ 8,8×10⁷¹ |
+
+- **Multiplicação/divisão:** `ℓ ± ℓ̃` (soma de ponto fixo). **1/x:** complemento de 2 de D,R,C,M (Prop. 7). **√x, x²:** deslocamentos.
+- **Soma/subtração:** com `q = ℓ − ℓ̃ ≥ 0`, `ℓ_soma = ℓ + Φ⁺(q)`, `Φ⁺(q) = 2·ln(1 + e^(−q/2))`; subtração com `Φ⁻(q) = 2·ln(1 − e^(−q/2))`, que vai a −∞ perto de q = 0. Em hardware: tabelas + interpolação; viável até ~32 bits (European Logarithmic Microprocessor) [2, §4.3], [4, §8.4].
+- **Precisão:** erro máximo `λ(p) = √e^(2^(−p−1)) − 1 < ⅔·2^(−p−1)`, uniforme dentro da binade [2, Prop. 11]. Um único tipo de arredondamento (média geométrica).
+- **Custos:** nem o número 2 é exato (2 → 2,0004 em T16); conversão IEEE ↔ takum log exige ln/exp [2, Alg. 2–3]; quire vira "bidimensional" e caro [4, §8.5].
+- **Base √e:** dá a faixa 10^±55; trocar para base e é um deslocamento; facilita ln/exp e Φ [2, §4.4].
+
+**Linear ou log para este projeto?** As duas compartilham decodificador de 12 bits, faixa fixa, negação e comparação de inteiros. A diferença numérica entre elas em produtos escalares é pequena (o acúmulo de arredondamentos domina); a diferença grande é contra o IEEE. Por isso: **RTL → takum linear**; **simulador → linear como principal e log como comparação** (no software Φ é só `log1p`/`exp`); **log como principal** só se o grupo tiver tempo e quiser explorar LNS, planejando tabelas de Φ, conversões com ln/exp e o acumulador do `vtdot.vv`.
+
 ---
 
 ## 9. Como fazer aritmética (soma e multiplicação)
