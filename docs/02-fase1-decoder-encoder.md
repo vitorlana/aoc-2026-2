@@ -8,6 +8,8 @@
 > O código Verilog é de vocês.
 >
 > **Decisões já tomadas pelo grupo:** Verilog, takum **linear**, tamanhos **T8, T16, T32**.
+> **Tudo em Verilog**, inclusive o modelo de referência e os testes: nada de Python ou
+> outra linguagem no fluxo.
 >
 > **Pré-requisito:** ter lido os capítulos "Takum" e "Aritmética" da revisão
 > ([`revisao-bibliografica.html`](revisao-bibliografica.html) ou
@@ -21,10 +23,10 @@
 2. [Prazo e ordem de trabalho](#2-prazo-e-ordem-de-trabalho)
 3. [Ferramentas e estrutura do repositório](#3-ferramentas-e-estrutura-do-repositório)
 4. [Passo 0 — Definir o formato interno (antes de qualquer Verilog)](#4-passo-0--definir-o-formato-interno-antes-de-qualquer-verilog)
-5. [Passo 1 — Modelo de referência em Python](#5-passo-1--modelo-de-referência-em-python)
+5. [Passo 1 — Modelo de referência em Verilog (só para teste)](#5-passo-1--modelo-de-referência-em-verilog-só-para-teste)
 6. [Passo 2 — Decodificador](#6-passo-2--decodificador)
 7. [Passo 3 — Codificador](#7-passo-3--codificador)
-8. [Passo 4 — Testbenches e vetores de teste](#8-passo-4--testbenches-e-vetores-de-teste)
+8. [Passo 4 — Testbenches](#8-passo-4--testbenches)
 9. [Passo 5 — Síntese e números para o relatório](#9-passo-5--síntese-e-números-para-o-relatório)
 10. [Casos de borda (lista de conferência)](#10-casos-de-borda-lista-de-conferência)
 11. [Erros comuns](#11-erros-comuns)
@@ -62,13 +64,14 @@ Decoder e encoder são a base disso, então a sugestão é fechá-los nos primei
 | Ordem | Tarefa | Quem pode fazer em paralelo | Estimativa |
 |---|---|---|---|
 | 0 | Fechar o formato interno (Passo 0) e escrever no repositório | grupo todo, juntos | 1 h |
-| 1 | Modelo Python + gerador de vetores (Passo 1) | pessoa A | 2–3 h |
-| 2 | Decoder em Verilog (Passo 2) | pessoa B | 3–4 h |
-| 3 | Encoder em Verilog (Passo 3) | pessoa C | 4–6 h |
+| 1 | Modelo de referência comportamental em Verilog (Passo 1) | pessoa A | 2–3 h |
+| 2 | Decoder RTL (Passo 2) | pessoa B | 3–4 h |
+| 3 | Encoder RTL (Passo 3) | pessoa C | 4–6 h |
 | 4 | Testbenches (Passo 4) | pessoa A, depois todos | 2–3 h |
 | 5 | Síntese com Yosys e tabela de recursos (Passo 5) | qualquer um | 1 h |
 
-O modelo Python vem **antes** porque é ele que diz se o Verilog está certo.
+O modelo de referência vem **antes** e deve ser escrito por **outra pessoa** que não a do RTL:
+se a mesma pessoa escreve os dois, o mesmo erro de entendimento aparece nos dois e o teste passa.
 
 ---
 
@@ -82,22 +85,26 @@ O modelo Python vem **antes** porque é ele que diz se o Verilog está certo.
 | **GTKWave** | Ver formas de onda (`$dumpfile` / `$dumpvars`) |
 | **Verilator** (opcional) | Lint (`verilator --lint-only -Wall`) — pega muitos erros de largura |
 | **Yosys** | Síntese genérica para contar células/LUTs (números para o artigo) |
-| **Python 3** | Modelo de referência e geração de vetores |
 | **make** | Um comando para rodar tudo (`make test`) |
+
+Compilem com `iverilog -g2005` (ou `-g2012` se quiserem recursos de SystemVerilog no testbench).
+O Icarus aceita o tipo `real` e as funções matemáticas do Verilog-2005 (`$pow`, `$ln`, `$floor`…),
+que serão usados **só no testbench**.
 
 **Estrutura sugerida:**
 
 ```
 rtl/          takum_hdr_dec.v, takum_decoder.v, takum_encoder.v   (só RTL sintetizável)
-tb/           tb_decoder.v, tb_encoder.v, tb_roundtrip.v
-model/        takum.py           (modelo de referência)
-              gen_vectors.py     (gera os arquivos de vetores)
-vectors/      dec_t8.hex, dec_t16.hex, dec_t32.hex, enc_t16.hex, ...   (gerados; podem ir no .gitignore)
+tb/           takum_ref.vh       (modelo de referência: funções comportamentais, NÃO sintetizáveis)
+              tb_decoder.v, tb_encoder.v, tb_roundtrip.v, tb_props.v
 docs/         este guia + diagramas de blocos
-Makefile      alvos: vectors, test, lint, synth, clean
+Makefile      alvos: test, lint, synth, clean
 ```
 
-Regra de ouro: **`rtl/` não importa nada de `tb/`**, e o testbench nunca "conserta" a saída do RTL.
+Regras de ouro:
+
+- **`rtl/` não inclui nada de `tb/`.** O modelo de referência vive só no testbench.
+- **O testbench nunca "conserta" a saída do RTL** e nunca calcula o esperado reaproveitando o RTL.
 
 ---
 
@@ -144,25 +151,42 @@ O núcleo aritmético vai produzir resultados com **mais bits** do que cabem e c
 
 ---
 
-## 5. Passo 1 — Modelo de referência em Python
+## 5. Passo 1 — Modelo de referência em Verilog (só para teste)
 
-Partam do `takum_linear_decode` que está na revisão (§8.8 do Markdown / capítulo Takum do HTML).
-Ele já foi conferido contra o livro e o artigo. O que falta vocês escreverem:
+Sem Python, o "gabarito" é um **modelo comportamental em Verilog**: funções que só existem no
+testbench (`tb/takum_ref.vh`, incluído com `` `include ``), escritas para serem **claras e diferentes
+do RTL**, sem se preocupar com hardware. Elas podem usar `real`, laços, `integer` e potências.
 
-1. **`decode_unpacked(bits, n)`** → devolve exatamente o formato interno do Passo 0
-   (`is_zero, is_nar, sign, exp, frac`). É o "gabarito" do decoder Verilog.
-2. **`encode(sign, exp, frac, guard, round, sticky, n)`** → devolve os N bits, seguindo
-   **as mesmas regras** que o hardware vai seguir (seção 7). É o gabarito do encoder.
-3. **`nearest_takum(x, n)`** por força bruta (procura o vizinho mais próximo entre todos os padrões).
-   Serve para conferir o `encode` do próprio modelo em T16/T32.
-4. **`gen_vectors.py`**: escreve arquivos `.hex`, uma linha por caso, com entrada e saída esperada
-   concatenadas. Ex.: para o decoder de T16, cada linha pode ter `entrada(16) | zero | nar | sign | exp(9) | frac(11)`.
+### 5.1 O que escrever
 
-**Testes do próprio modelo (façam antes do Verilog):**
+| Função (testbench) | Entrada → saída | Como escrever **diferente** do RTL |
+|---|---|---|
+| `ref_value(t, n)` → `real` | palavra takum → valor real | Use a **fórmula do artigo direto**, inclusive para negativos: `e = (−1)^S (c + S)` e `valor = ((1 − 3S) + f) · 2^e` (Def. 8 de [2]). O RTL usa negação + caso positivo; o modelo não. Assim um confere o outro. |
+| `unpacked_value(sign, exp, frac, n)` → `real` | formato interno → valor real | `(−1)^sign · (1 + frac / 2^(N−5)) · 2^exp` |
+| `ref_r_c(t, n, r, c)` (task) | palavra → `r`, `c` inteiros | Laços e `if`s com as fórmulas `c = 2^r − 1 + C` / `c = −2^(r+1) + 1 + C`, **não** as versões `{1,C} − 1` / `−{1,~C}` usadas no RTL |
 
-- `decode` de todos os T8 e T16 bate com `takum_linear_decode`.
-- `encode(decode_unpacked(x)) == x` para todos os T8 e T16.
-- Para valores aleatórios em T16, `encode` = `nearest_takum` (veja a observação sobre T8 na §7.5).
+Por que `real` serve de gabarito: um takum de até 32 bits tem no máximo 27 bits de fração e expoente
+entre −255 e 254. Um `real` do Verilog é um *double* (53 bits de fração, expoente até ±1023), então
+**todo valor T8/T16/T32 cabe nele exatamente**. Comparar com `==` é legítimo.
+
+### 5.2 Testes do próprio modelo (façam antes do RTL)
+
+Uma bateria pequena, num testbench `tb_ref.v`, que só exercita o modelo:
+
+- Os exemplos da revisão: `0100_0000` → 1; `0100_0001` → 1,125; `0101_0000` → 8; `0111_1111` → 2²³⁹;
+  `0000_0001` → 2⁻²³⁹; `1100_0000` → −1; `0011_1111` → 0,9375.
+- Os exercícios da §12 deste guia.
+- Para todos os T8 e T16: o valor de `−t` (complemento de 2) é `−ref_value(t)`, e
+  `ref_value(t) < ref_value(t + 1)` percorrendo os inteiros com sinal (monotonicidade).
+
+Se o modelo passar nisso, ele está fiel ao artigo, e pode julgar o RTL.
+
+### 5.3 O codificador de referência (opcional)
+
+Para o encoder, vocês **não precisam** de um codificador de referência: dá para verificar o RTL
+por **propriedades** (§8.2), usando só `ref_value`. Se mesmo assim quiserem um, escrevam-no como
+**busca**: dado um `real` x, percorra os padrões (exaustivo em T8/T16; busca binária em T32,
+já que a ordem dos inteiros é a ordem dos valores) e escolha o vizinho mais próximo.
 
 ---
 
@@ -223,7 +247,7 @@ Depois da negação, olhe só os **12 bits mais significativos** de `u` (para T8
 | `h[9:7]` | R |
 | `h[6:0]` | janela de 7 bits onde mora C (só os `r` primeiros são de C) |
 
-**Fórmulas já arrumadas para hardware** (todas conferidas no modelo Python):
+**Fórmulas já arrumadas para hardware** (equivalentes às do artigo; a §5 mostra como conferir):
 
 | Grandeza | Fórmula | Dica de hardware |
 |---|---|---|
@@ -262,7 +286,7 @@ Observações:
 
 ### 6.6 Critério de pronto do decoder
 
-- Saída idêntica ao modelo para **todos os 256 T8** e **todos os 65.536 T16**.
+- `unpacked_value(saídas)` igual a `ref_value(t)` para **todos os 256 T8** e **todos os 65.536 T16**, e as flags `is_zero`/`is_nar` corretas.
 - T32: pelo menos 1 milhão de padrões aleatórios + todos os casos da §10.
 - `verilator --lint-only -Wall` sem avisos de largura.
 
@@ -350,49 +374,65 @@ Depois do arredondamento:
 > **Observação importante para os testes (T8):** quando o arredondamento descarta bits de **característica**
 > (só acontece em T8, para |x| ≥ 2¹⁶ ou |x| < 2⁻¹⁵), arredondar a palavra **não** dá o vizinho mais próximo
 > em valor — o ponto médio deixa de ser aritmético. Isso é o comportamento definido pelo Algoritmo 1 de [2],
-> não um bug. O modelo Python do encoder deve seguir **a regra da palavra**, e a comparação com
-> `nearest_takum` (força bruta) só vale para T16/T32 e para a região "normal" de T8.
-> (Verificamos: em T16 as duas regras coincidem em 20.000 valores aleatórios entre 2⁻⁶⁰ e 2⁶⁰.)
+> não um bug. Por isso a checagem "vizinho mais próximo em valor" (§8.2) só vale para T16/T32 e para a
+> região 2⁻¹⁵ ≤ |x| < 2¹⁶ de T8. (Verificamos: em T16 as duas regras coincidem em 20.000 valores
+> aleatórios entre 2⁻⁶⁰ e 2⁶⁰.)
 
 ### 7.6 Critério de pronto do encoder
 
 - **Ida e volta:** `encoder(decoder(x)) == x` para todos os T8 e T16 e para ≥ 1 milhão de T32 aleatórios.
-- **Arredondamento:** vetores gerados pelo modelo com `frac` mais larga que o formato (bits guard/round/sticky
-  ligados), incluindo **empates exatos** (g = 1, s = 0) com último bit par e ímpar.
+- **Arredondamento:** as propriedades da §8.2 passando para entradas com `frac`, guard, round e sticky
+  aleatórios, incluindo **empates exatos** (g = 1, s = 0) com último bit par e ímpar.
 - **Saturação e casos especiais** da §10.
 - Lint limpo.
 
 ---
 
-## 8. Passo 4 — Testbenches e vetores de teste
+## 8. Passo 4 — Testbenches
+
+Todos os estímulos são gerados **dentro do testbench** (laços e `$random`), sem arquivos externos.
 
 ### 8.1 Estratégia
 
 | Teste | Como | Cobertura |
 |---|---|---|
-| Decoder T8, T16 | Exaustivo, vetores do modelo | 100% dos padrões |
-| Decoder T32 | Aleatório + casos de borda | ≥ 10⁶ padrões |
+| Modelo de referência | `tb_ref.v`: exemplos conhecidos + propriedades (§5.2) | antes de tudo |
+| Decoder T8, T16 | Laço sobre todos os padrões; compara `unpacked_value(saídas)` com `ref_value(t)` | 100% dos padrões |
+| Decoder T32 | `$random` com semente fixa + casos de borda da §10 | ≥ 10⁶ padrões |
 | Ida e volta | `tb_roundtrip`: decoder → encoder, compara com a entrada | T8/T16 exaustivo, T32 aleatório |
-| Encoder com arredondamento | Vetores do modelo: valores entre dois takums vizinhos, empates, sticky | Milhares por tamanho |
+| Encoder: arredondamento | Propriedades da §8.2 com `frac`/guard/round/sticky aleatórios | Milhares por tamanho |
 | Saturação | Expoentes −300, −256, −255, 254, 255, 400 | Casos dirigidos |
 
-O teste de **ida e volta** não precisa do Python: é o RTL contra ele mesmo. Comecem por ele assim que
+O teste de **ida e volta** não precisa nem do modelo: é o RTL contra ele mesmo. Comecem por ele assim que
 os dois módulos compilarem — pega a maior parte dos erros de campo.
 
-### 8.2 Mecânica do testbench (o mínimo que funciona no Icarus)
+### 8.2 Verificando o encoder sem um codificador de referência
 
-- Leia os vetores com `$readmemh("vectors/dec_t16.hex", mem);` para um array.
-- Num laço, aplique a entrada, espere `#1`, compare **cada campo** com o esperado.
-- Em erro, imprima com `$display` a entrada, o esperado e o obtido **em hexadecimal e em decimal**, e
-  conte os erros. Pare após, digamos, 20 erros para não inundar o terminal.
+Para uma entrada do encoder (`sign`, `exp`, `frac` com guard/round, `sticky`), calcule no testbench o valor
+exato `x` (um `real`; com `sticky = 1`, some um "pouquinho" — por exemplo metade do peso do bit **round**, que fica abaixo de todos os bits de `frac` e não cria empate —
+para representar que há bits descartados). O RTL devolve `t`. Então confira, usando só `ref_value`:
+
+1. **Vizinhança:** `x` está entre `ref_value(t − 1)` e `ref_value(t + 1)` (vizinhos como inteiros; cuidado
+   com as pontas: não existe vizinho além do maior/menor positivo).
+2. **Mais próximo:** `|ref_value(t) − x|` ≤ distância de `x` para cada vizinho (na região onde o
+   arredondamento é aritmético — veja a observação da §7.5).
+3. **Empate:** se `x` está exatamente no meio, o último bit de `t` é 0.
+4. **Saturação:** se `x` está acima do maior positivo, `t` é o maior positivo; abaixo do menor, o menor.
+   Nunca `0` nem `100…0` para entrada diferente de zero/NaR.
+5. **Sinal:** trocar `sign` na entrada dá o complemento de 2 de `t`.
+
+Essas cinco checagens juntas equivalem a ter um codificador de referência, e são independentes do RTL.
+
+### 8.3 Mecânica do testbench (o mínimo que funciona no Icarus)
+
+- Instancie o DUT com o parâmetro (`takum_decoder #(.N(16)) dut (...)`). Para testar os três tamanhos no mesmo
+  arquivo, instancie três vezes ou use um `generate`.
+- Num laço `for`, aplique a entrada, espere `#1` (é combinacional) e compare.
+- Para T32 aleatório: `seed = 32'd2026; x = $random(seed);` — semente fixa = teste reproduzível.
+- Em erro, imprima com `$display` a entrada, o esperado e o obtido **em hexadecimal e em decimal**
+  (`%h`, `%d`, e `%e` para `real`), conte os erros e pare depois de uns 20.
 - No final, imprima `PASS`/`FAIL` e o número de casos — o `Makefile` pode procurar essa palavra.
-- Gerem um `.vcd` só quando estiverem depurando (o exaustivo de T16 gera arquivos grandes).
-
-### 8.3 Organização dos vetores
-
-- Um arquivo por (módulo, tamanho). Formato simples: campos concatenados em hexadecimal, um caso por linha.
-- Documentem o layout de cada linha no topo do `gen_vectors.py`.
-- Gerem os vetores com uma **semente fixa** (`random.seed(…)`) para que os testes sejam reproduzíveis.
+- Gerem `.vcd` (`$dumpfile`/`$dumpvars`) só ao depurar um caso específico: o exaustivo de T16 gera arquivos enormes.
 
 ---
 
@@ -420,7 +460,7 @@ Se a disciplina tiver uma FPGA de referência, usem também o fluxo dela (LUTs e
 
 ## 10. Casos de borda (lista de conferência)
 
-Para cada tamanho N, os vetores precisam conter pelo menos:
+Para cada tamanho N, os testes precisam cobrir pelo menos:
 
 | Caso | Padrão (T8 como exemplo) | Esperado |
 |---|---|---|
@@ -453,7 +493,8 @@ Para cada tamanho N, os vetores precisam conter pelo menos:
   for calculada em 3 bits. Pensem na largura de `5 + r`.
 - **Arredondar antes de saturar a faixa de expoente**, ou saturar antes de tratar zero/NaR. A ordem é:
   especiais → faixa de expoente → montar → arredondar → saturar resultado → negar.
-- **Testbench que reaproveita a lógica do RTL** para calcular o esperado. O esperado vem do Python.
+- **Testbench que reaproveita a lógica do RTL** para calcular o esperado. O esperado vem do modelo de referência, escrito de outro jeito e por outra pessoa.
+- **Usar `real` dentro de `rtl/`.** `real`, `$pow`, laços com `integer` de tamanho variável etc. são só para o testbench; não sintetizam.
 - **Negar NaR ou zero** e achar que o resultado está errado: `−0 = 0` e `−NaR = NaR` em complemento de 2.
 
 ---
@@ -495,8 +536,8 @@ Façam à mão antes de codificar (ou usem o decodificador interativo da página
 ## 13. Checklist de "pronto"
 
 - [ ] Formato interno escrito e combinado com quem fará a soma/multiplicação
-- [ ] Modelo Python: `decode_unpacked`, `encode`, `nearest_takum` e autotestes passando
-- [ ] `gen_vectors.py` com semente fixa e layout documentado
+- [ ] Modelo de referência em Verilog (`tb/takum_ref.vh`) com `ref_value` e `unpacked_value`, passando no `tb_ref.v`
+- [ ] Testbenches com semente fixa e mensagens de erro legíveis
 - [ ] `takum_hdr_dec` (12 bits) como módulo próprio, reutilizado em T8/T16/T32
 - [ ] `takum_decoder` passando exaustivo T8/T16 e aleatório T32
 - [ ] `takum_encoder` passando ida e volta, arredondamento, empates e saturação
