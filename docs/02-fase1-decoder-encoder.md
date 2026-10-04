@@ -11,6 +11,9 @@
 > **Tudo em Verilog**, inclusive o modelo de referência e os testes: nada de Python ou
 > outra linguagem no fluxo.
 >
+> **Atualização:** a implementação já existe em `rtl/` e `tb/`; veja
+> [`03-fase1-implementacao.md`](03-fase1-implementacao.md). Este guia continua valendo como explicação do raciocínio.
+>
 > **Pré-requisito:** ter lido os capítulos "Takum" e "Aritmética" da revisão
 > ([`revisao-bibliografica.html`](revisao-bibliografica.html) ou
 > [`01-revisao-bibliografica.md`](01-revisao-bibliografica.md), §8 e §9).
