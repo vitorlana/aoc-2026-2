@@ -5,5 +5,6 @@ Projeto Integrador AOC 2026/02 — Formato aritmético Takum na Extensão Vetori
 ## Documentação
 
 - [Fase 1 — Revisão bibliográfica (HTML interativo)](docs/revisao-bibliografica.html) · [versão Markdown](docs/01-revisao-bibliografica.md)
+- [Fase 1 — Guia do decodificador e codificador em Verilog](docs/02-fase1-decoder-encoder.md)
 - Enunciado: `ProjectGuidelinesAOC.pdf`
 - Artigos e livros de referência: `papers/`
