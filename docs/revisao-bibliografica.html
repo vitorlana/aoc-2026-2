@@ -1,0 +1,1888 @@
+<title>Takum na RVV</title>
+<meta name="description" content="Fase 1 do Projeto Integrador AOC 2026/02: IEEE 754, posits, takum e RISC-V Vector, com laboratórios interativos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: índice fixo à esquerda + coluna de leitura (~68ch); os "laboratórios" alargam até 980px.
+   Cores dos campos S/D/R/C/F seguem o esquema de cores do artigo do takum (Hunhold 2024, Tab. 3). */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f5; --ink:#141a22; --muted:#566170; --faint:#8a94a2;
+  --line:#dbe0e7; --accent:#0b6b70; --accent-soft:#d9eeee;
+  --f-sign:#b02a2d; --f-dir:#007900; --f-reg:#8c399e; --f-char:#1f5dc2; --f-frac:#636363; --bit-ink:#ffffff;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#c98500;
+  --good:#0a7d0a; --bad:#c03434; --code-bg:#eef1f5;
+  --font-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Literata", Georgia, "Times New Roman", serif;
+  --font-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --step--1:.86rem; --step-0:1.02rem; --step-1:1.22rem; --step-2:1.5rem; --step-3:2rem; --step-4:2.7rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161c; --surface:#181f27; --surface-2:#1f2832; --ink:#e8edf2; --muted:#a5b0bd; --faint:#7a8593;
+    --line:#2c3642; --accent:#4cc3c6; --accent-soft:#16373a;
+    --f-sign:#f07a7a; --f-dir:#5cc463; --f-reg:#c993d6; --f-char:#78a6f2; --f-frac:#a9a9a9; --bit-ink:#0f141a;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --good:#4fc35a; --bad:#f07a7a; --code-bg:#1f2832; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#181f27; --surface-2:#1f2832; --ink:#e8edf2; --muted:#a5b0bd; --faint:#7a8593;
+  --line:#2c3642; --accent:#4cc3c6; --accent-soft:#16373a;
+  --f-sign:#f07a7a; --f-dir:#5cc463; --f-reg:#c993d6; --f-char:#78a6f2; --f-frac:#a9a9a9; --bit-ink:#0f141a;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --good:#4fc35a; --bad:#f07a7a; --code-bg:#1f2832; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{transition:none!important;animation:none!important}}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:var(--step-0);line-height:1.65;padding-inline:16px;padding-block:0 64px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3,h4{font-family:var(--font-display);line-height:1.15;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:var(--step-3);margin:0 0 .6em}
+h3{font-size:var(--step-1);margin:1.8em 0 .5em}
+p,ul,ol{margin:0 0 1em}
+code,kbd,.mono{font-family:var(--font-mono);font-size:.88em}
+code{background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:.84rem;line-height:1.5;margin:0 0 1.2em}
+pre code{background:none;padding:0;font-size:inherit}
+small,.small{font-size:var(--step--1)}
+.muted{color:var(--muted)}
+
+/* progresso de leitura */
+#progress{position:fixed;top:0;left:0;right:0;height:calc(3px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);z-index:50;background:transparent;pointer-events:none}
+#progress span{display:block;height:3px;width:0;background:var(--accent)}
+
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:48px;max-width:1240px;margin:0 auto}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;max-height:calc(100vh - 40px);overflow:auto;padding-block:28px;font-family:var(--font-display);font-size:.92rem}
+nav.toc .label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+nav.toc ol{list-style:none;padding:0;margin:0;display:grid;gap:2px;counter-reset:t}
+nav.toc a{display:grid;grid-template-columns:2.1em 1fr;color:var(--muted);text-decoration:none;padding:5px 8px;border-radius:6px;line-height:1.3}
+nav.toc a .n{font-family:var(--font-mono);font-size:.78rem;color:var(--faint);padding-top:1px}
+nav.toc a:hover{background:var(--surface-2);color:var(--ink)}
+nav.toc a.active{background:var(--accent-soft);color:var(--ink)}
+nav.toc a.active .n{color:var(--accent)}
+.toc-mobile{display:none}
+
+main{min-width:0;padding-block:40px 0}
+.read{max-width:68ch}
+.wide{max-width:980px}
+section.chap{padding-block:40px 24px;border-top:1px solid var(--line);scroll-margin-top:12px}
+section.chap:first-of-type{border-top:0}
+.eyebrow{font-family:var(--font-mono);font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+
+header.hero{padding-block:12px 28px;max-width:800px}
+header.hero h1{font-size:var(--step-4);margin:.2em 0 .35em}
+header.hero .lede{font-size:var(--step-1);color:var(--muted);max-width:60ch}
+.hero-bits{display:flex;flex-wrap:wrap;gap:4px;margin:18px 0 6px}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:var(--step--1);color:var(--muted);font-family:var(--font-display)}
+
+/* bit chips */
+.bit{display:inline-grid;place-items:center;width:30px;height:38px;border-radius:5px;font-family:var(--font-mono);font-weight:600;font-size:1rem;color:var(--bit-ink);border:0;cursor:default;user-select:none}
+.bit.S{background:var(--f-sign)} .bit.D{background:var(--f-dir)} .bit.R{background:var(--f-reg)} .bit.C{background:var(--f-char)} .bit.F{background:var(--f-frac)}
+.bit.ghost{background:transparent!important;color:var(--faint);border:1.5px dashed var(--line)}
+.legend-fields{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--font-display);font-size:.85rem;color:var(--muted)}
+.legend-fields i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* callouts */
+.note{border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 1.2em}
+.note.warn{border-left-color:var(--f-sign)}
+.note p:last-child{margin:0}
+.thesis{font-family:var(--font-display);font-size:var(--step-1);line-height:1.4;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:0 0 1.2em}
+
+/* tables */
+.tbl{overflow-x:auto;margin:0 0 1.3em;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;line-height:1.45}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--font-display);font-weight:700;font-size:.82rem;color:var(--muted);background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:.82rem;white-space:nowrap}
+.yes{color:var(--good);font-weight:600} .no{color:var(--bad);font-weight:600}
+
+/* glossary terms */
+.g{border-bottom:1.5px dotted var(--accent);cursor:help}
+#gpop{position:absolute;z-index:60;max-width:300px;background:var(--ink);color:var(--bg);font-family:var(--font-display);font-size:.84rem;line-height:1.4;padding:10px 12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#gpop b{display:block;margin-bottom:2px}
+
+/* labs */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;margin:8px 0 1.6em}
+.lab-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:14px}
+.lab-head h4{margin:0;font-size:var(--step-1)}
+.lab-head .tag{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--muted);padding:6px 12px;font-family:var(--font-display);font-size:.88rem;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+.btn{border:1px solid var(--line);background:var(--surface-2);color:var(--ink);padding:6px 12px;border-radius:8px;font-family:var(--font-display);font-size:.86rem;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+select,input[type="text"]{font-family:var(--font-mono);font-size:.9rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.bitrow{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+.bitrow .bit{cursor:pointer;transition:transform .08s}
+.bitrow .bit:hover{transform:translateY(-2px)}
+.bitrow .bit.ghost{cursor:default}
+.bitrow .bit:hover:not(.ghost){filter:brightness(1.1)}
+.bitrow .gap{width:8px}
+.bitidx{display:flex;gap:3px;font-family:var(--font-mono);font-size:.62rem;color:var(--faint);margin-bottom:12px}
+.bitidx span{width:30px;text-align:center}
+.decode-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+.steps{font-family:var(--font-mono);font-size:.84rem;line-height:1.75;background:var(--surface-2);border-radius:8px;padding:12px 14px;overflow-x:auto}
+.steps .k{color:var(--muted)}
+.steps .cS{color:var(--f-sign)} .steps .cD{color:var(--f-dir)} .steps .cR{color:var(--f-reg)} .steps .cC{color:var(--f-char)} .steps .cF{color:var(--f-frac)}
+.bigval{font-family:var(--font-display);font-size:var(--step-3);line-height:1.1;word-break:break-all}
+.cmp{display:grid;gap:8px;margin-top:10px;font-size:.88rem}
+.cmp div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.cmp div span:last-child{font-family:var(--font-mono);font-size:.82rem;text-align:right;word-break:break-all}
+
+/* chart */
+.chart-wrap{position:relative;overflow-x:auto}
+.chart-wrap svg{display:block;width:100%;min-width:560px;height:auto}
+.chart-wrap .axis text,.chart-wrap .lbl{fill:var(--muted);font-family:var(--font-display);font-size:11px}
+.chart-wrap .grid line{stroke:var(--line);stroke-width:1}
+.chart-wrap .base{stroke:var(--faint);stroke-width:1}
+.chart-tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--font-display);font-size:.8rem;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.12);min-width:170px}
+.chart-tip .sw{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--font-display);font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.chart-legend i{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:6px;vertical-align:4px}
+
+/* conversor */
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{font-size:.78rem;padding:4px 10px}
+.conv td .err{display:inline-block;height:6px;border-radius:3px;background:var(--accent);vertical-align:1px;margin-right:6px}
+.badge{display:inline-block;font-family:var(--font-display);font-size:.72rem;padding:1px 7px;border-radius:999px;border:1px solid currentColor}
+.badge.bad{color:var(--bad)} .badge.ok{color:var(--good)}
+
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:stretch;margin:6px 0 1.4em}
+.pipe div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.86rem;line-height:1.4;position:relative}
+.pipe div b{display:block;font-family:var(--font-display);font-size:.95rem;margin-bottom:4px}
+.pipe div:not(:last-child)::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--accent);font-weight:700;background:var(--bg);line-height:1}
+.pipe .hl{border-color:var(--accent);background:var(--accent-soft)}
+
+/* quiz */
+.quiz{border:1px dashed var(--accent);border-radius:10px;padding:14px 16px;margin:0 0 1.4em;background:var(--surface)}
+.quiz .q{font-family:var(--font-display);font-weight:700;margin-bottom:8px}
+.quiz .q::before{content:"Teste rápido · ";color:var(--accent);font-weight:500}
+.quiz .opts{display:grid;gap:6px}
+.quiz .opts button{text-align:left;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);padding:8px 12px;border-radius:8px;font-family:var(--font-body);font-size:.92rem;cursor:pointer}
+.quiz .opts button.right{border-color:var(--good);box-shadow:inset 3px 0 0 var(--good)}
+.quiz .opts button.wrong{border-color:var(--bad);box-shadow:inset 3px 0 0 var(--bad)}
+.quiz .why{margin-top:10px;font-size:.92rem}
+
+/* CSR demo */
+.csr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:start}
+.mat{display:grid;grid-template-columns:repeat(4,40px);gap:3px;font-family:var(--font-mono)}
+.mat span{height:40px;display:grid;place-items:center;border-radius:6px;background:var(--surface-2);color:var(--faint);font-size:.9rem}
+.mat span.nz{background:var(--accent-soft);color:var(--ink);font-weight:600;cursor:pointer}
+.mat span.on,.arr span.on{outline:2px solid var(--accent);outline-offset:-2px;color:var(--ink)}
+.arrs{display:grid;gap:8px;font-family:var(--font-mono);font-size:.84rem}
+.arr{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.arr b{font-weight:400;color:var(--muted);width:6.5em}
+.arr span{min-width:30px;padding:4px 6px;text-align:center;border-radius:5px;background:var(--surface-2)}
+.rowsum{font-family:var(--font-mono);font-size:.84rem;margin-top:10px;color:var(--muted)}
+
+/* checklist */
+.check{list-style:none;padding:0;display:grid;gap:6px}
+.check label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;padding:6px 8px;border-radius:6px}
+.check label:hover{background:var(--surface-2)}
+.check input{margin-top:5px;accent-color:var(--accent)}
+.check-count{font-family:var(--font-display);color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.meter{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin-bottom:12px;max-width:340px}
+.meter span{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+
+.decide{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.decide fieldset{border:1px solid var(--line);border-radius:8px;padding:8px 12px 10px;margin:0;min-width:0}
+.decide legend{font-family:var(--font-display);font-weight:700;font-size:.9rem;padding:0 4px}
+.decide label{display:flex;gap:8px;align-items:flex-start;font-size:.92rem;padding:3px 0;cursor:pointer}
+.decide input{accent-color:var(--accent);margin-top:5px}
+.copy{float:right;margin:-4px -4px 0 8px;font-size:.75rem;padding:3px 9px}
+.refs li{margin-bottom:.6em}
+.refs .file{font-family:var(--font-mono);font-size:.78rem;color:var(--muted)}
+details.more{border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--surface);margin:0 0 1.2em}
+details.more summary{cursor:pointer;font-family:var(--font-display);font-weight:600}
+
+@media (max-width: 900px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:0}
+  nav.toc{display:none}
+  .toc-mobile{display:block;margin:16px 0 0;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 12px;font-family:var(--font-display)}
+  .toc-mobile ol{padding-left:1.4em;margin:8px 0 4px}
+  .decode-grid,.csr,.decide{grid-template-columns:minmax(0,1fr)}
+  .pipe{grid-template-columns:minmax(0,1fr)}
+  .pipe div:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-14px;transform:translateX(-50%)}
+  header.hero h1{font-size:2.1rem}
+}
+@media (max-width: 480px){
+  .bit{width:24px;height:32px;font-size:.88rem}
+  .bitidx span{width:24px}
+  .lab{padding:14px}
+}
+</style>
+
+<div id="progress"><span></span></div>
+
+<div class="shell">
+<nav class="toc" aria-label="Índice">
+  <div class="label">Fase 1 · Revisão</div>
+  <ol id="toc"></ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Projeto Integrador AOC · 2026/02 · Fase 1</div>
+  <h1>Takum na extensão vetorial RISC-V: revisão bibliográfica</h1>
+  <p class="lede">Do ponto flutuante IEEE 754 aos posits e ao takum, e daí às instruções vetoriais da RVV. Escrito para quem fez sistemas digitais há um tempo e programa, mas nunca estudou a fundo como o computador guarda números reais.</p>
+  <div class="hero-bits" aria-label="Exemplo: o número 1 em takum de 16 bits">
+    <span class="bit S">0</span><span class="bit D">1</span><span class="bit R">0</span><span class="bit R">0</span><span class="bit R">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span><span class="bit F">0</span>
+  </div>
+  <div class="legend-fields" style="margin-bottom:14px"><span><i style="background:var(--f-sign)"></i>S sinal</span><span><i style="background:var(--f-dir)"></i>D direção</span><span><i style="background:var(--f-reg)"></i>R regime</span><span><i style="background:var(--f-char)"></i>C característica</span><span><i style="background:var(--f-frac)"></i>F fração</span></div>
+  <div class="meta-row"><span>O número 1 em takum de 16 bits</span><span>·</span><span>Passe o mouse nos <span class="g" data-g="takum" tabindex="0">termos sublinhados</span> para ver a definição</span></div>
+  <details class="toc-mobile"><summary>Índice</summary><ol id="toc-m"></ol></details>
+</header>
+
+<!-- 0 -->
+<section class="chap" id="mapa" data-title="O que o projeto pede">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>O que o projeto pede</h2>
+  <p>O enunciado (<code>ProjectGuidelinesAOC.pdf</code>) divide o trabalho em três fases. Esta revisão cobre os conceitos de todas elas.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Fase</th><th>O que é</th><th>Onde estudar aqui</th></tr></thead>
+  <tbody>
+    <tr><td><b>1. Módulo Takum</b></td><td>Decodificar um takum nos campos <b>S, D, R, C, F</b> e implementar soma/subtração e multiplicação para <b>T8, T16 e T32</b>.</td><td><a href="#ieee">IEEE 754</a>, <a href="#takum">Takum</a>, <a href="#aritmetica">Aritmética</a></td></tr>
+    <tr><td><b>2. Extensão da ISA</b></td><td>Criar as instruções vetoriais <code>vtadd.vv</code>, <code>vtsub.vv</code>, <code>vtmul.vv</code>, <code>vtdot.vv</code> e <code>vncvt.t.t</code> (proposta Zvtakum).</td><td><a href="#simd">SIMD</a>, <a href="#rvv">RVV</a></td></tr>
+    <tr><td><b>3. Avaliação</b></td><td>Rodar <code>y = A·x</code> com matrizes esparsas em takum e em IEEE 754 (FP8, FP16, FP32), medir o erro relativo contra Float128 e analisar a redução de instruções e de CSRs.</td><td><a href="#avaliacao">Avaliação</a>, <a href="#comparacao">Comparação</a></td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p class="thesis">Um único formato, com um único decodificador, consegue substituir a coleção de formatos (FP16, bfloat16, E4M3, E5M2, FP32…) que as ISAs vetoriais foram acumulando, com menos instruções, menos casos especiais e erro igual ou menor.</p>
+  <p>Essa tese vem de dois trabalhos de Laslo Hunhold que estão na pasta <code>papers/</code>:</p>
+  <ul>
+    <li><b>[2]</b> <i>Beating Posits at Their Own Game: Takum Arithmetic</i>, que define o takum e prova suas propriedades.</li>
+    <li><b>[1]</b> <i>Streamlining SIMD ISA Extensions with Takum Arithmetic: A Case Study on Intel AVX10.2</i>, que mostra que trocar os formatos do AVX10.2 por takum simplifica a ISA. <b>O nosso projeto é refazer esse estudo para a RVV.</b></li>
+  </ul>
+</div>
+</section>
+
+<!-- 1 -->
+<section class="chap" id="binario" data-title="Binário e ponto fixo">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Binário, complemento de dois e ponto fixo</h2>
+  <h3>Inteiro sem sinal</h3>
+  <p>Uma palavra de <i>n</i> bits <code>b(n−1) … b1 b0</code> vale <code>Σ bᵢ·2ⁱ</code>. Com 8 bits: 0 a 255.</p>
+  <h3>Complemento de dois</h3>
+  <p>O bit mais significativo passa a valer <code>−2^(n−1)</code>. Com 8 bits: −128 a +127. Três propriedades que você vai reencontrar no takum:</p>
+  <ul>
+    <li><b>Negar</b> = inverter todos os bits e somar 1.</li>
+    <li>Existe <b>um só zero</b>, <code>00000000</code>. O padrão <code>10000000</code> (−128) não tem simétrico positivo.</li>
+    <li><b>Comparar</b> dois números é usar o comparador de inteiros com sinal.</li>
+  </ul>
+  <div class="note"><p>O takum foi desenhado para herdar essas três propriedades. O padrão <code>1000…0</code> vira o único "não-é-um-real" (<span class="g" data-g="nar" tabindex="0">NaR</span>), e negar um takum é negar em complemento de dois.</p></div>
+  <h3>Ponto fixo</h3>
+  <p>Um inteiro com uma vírgula imaginária numa posição fixa. No formato Q4.4 (4 bits inteiros, 4 fracionários), <code>0011.1000</code> = 3,5. A soma é uma soma de inteiros, então o hardware é simples. O problema é a faixa: com 8 bits em Q4.4 você vai de 1/16 a quase 8. Para representar 0,000001 e 1.000.000 ao mesmo tempo, é preciso deixar a vírgula "flutuar".</p>
+</div>
+</section>
+
+<!-- 2 -->
+<section class="chap" id="conceitos" data-title="Conceitos básicos">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Conceitos que aparecem em todo lugar</h2>
+  <h3>Ponto flutuante é notação científica em base 2</h3>
+<pre><code>  decimal:  −6,02 × 10^23
+  binário:  (−1)^sinal × 1,xxxxx × 2^expoente
+                           │           │
+                     significando   expoente</code></pre>
+</div>
+<div class="tbl read"><table>
+  <thead><tr><th>Termo</th><th>O que é</th></tr></thead>
+  <tbody>
+    <tr><td><b>Sinal</b></td><td>1 bit: positivo ou negativo.</td></tr>
+    <tr><td><b>Expoente</b></td><td>Diz o tamanho do número (onde fica a vírgula).</td></tr>
+    <tr><td><b>Fração</b></td><td>Os dígitos depois do "1,".</td></tr>
+    <tr><td><b>Significando</b></td><td><code>1 + fração</code>, o número "1,xxxx" inteiro.</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p class="small muted">Os nomes <i>característica</i> e <i>mantissa</i> vêm das tábuas de logaritmo (parte inteira e parte fracionária). O takum logarítmico usa C e M por isso [2, §4.3]. O enunciado usa F porque é o nome no takum linear.</p>
+
+  <h3>Faixa dinâmica e precisão</h3>
+  <p>A <span class="g" data-g="faixa" tabindex="0">faixa dinâmica</span> vai do menor ao maior valor positivo representável. A <b>precisão</b> é quantos bits de fração existem. Com <i>n</i> bits fixos, há sempre uma troca:</p>
+<pre><code>  mais bits de expoente  ⇒  mais faixa,    menos precisão
+  mais bits de fração    ⇒  mais precisão, menos faixa</code></pre>
+  <p>É exatamente por isso que existem E4M3 e E5M2, FP16 e bfloat16: são escolhas diferentes da mesma troca. O takum tenta sair desse dilema.</p>
+  <ul>
+    <li><b>Precisão uniforme</b> (IEEE 754): todo número normal tem o mesmo número de bits de fração.</li>
+    <li><b><span class="g" data-g="tapered" tabindex="0">Precisão afunilada</span></b> (posit, takum): números perto de 1 têm mais bits de fração; os muito grandes ou muito pequenos têm menos.</li>
+  </ul>
+
+  <h3>Erro absoluto, erro relativo, ULP e épsilon</h3>
+  <ul>
+    <li><b>Erro absoluto:</b> <code>|x − x̃|</code>, com x o valor exato e x̃ o representado.</li>
+    <li><b>Erro relativo:</b> <code>|x − x̃| / |x|</code>. É o que importa: errar 1 em um milhão é ótimo; errar 1 em 2 é péssimo.</li>
+    <li><b><span class="g" data-g="ulp" tabindex="0">ULP</span>:</b> a distância entre dois números representáveis vizinhos.</li>
+    <li><b><span class="g" data-g="eps" tabindex="0">Épsilon de máquina</span>:</b> com <i>p</i> bits de fração e arredondamento para o mais próximo, o erro relativo máximo é cerca de <code>2^−(p+1)</code>. FP32 (p = 23) dá ~6×10⁻⁸, uns 7 dígitos decimais.</li>
+  </ul>
+  <p class="small muted">Atalho: dígitos decimais ≈ 0,3 × (p + 1). FP16 ≈ 3,3; bfloat16 ≈ 2,4; E4M3 ≈ 1,2.</p>
+
+  <h3>Arredondamento</h3>
+  <p>Quase nunca o resultado exato cabe no formato. O modo padrão é <span class="g" data-g="rne" tabindex="0">RNE</span>: para o mais próximo, empate para o par. Em hardware usam-se três bits extras abaixo do último bit guardado: <b>guard</b>, <b>round</b> e <b>sticky</b> (o OU de todos os bits que sobraram). Você vai precisar disso na Fase 1.</p>
+
+  <h3>Overflow, underflow e saturação</h3>
+  <ul>
+    <li><b>Overflow:</b> resultado maior que o maior representável. No IEEE 754 vira ±∞.</li>
+    <li><b>Underflow:</b> resultado menor que o menor representável. Vira 0 (ou subnormal).</li>
+    <li><b><span class="g" data-g="sat" tabindex="0">Saturação</span>:</b> o resultado é grampeado no maior ou menor número representável. Posits e takums fazem isso [2, §4.2]: nada vira 0 nem ∞ por estouro. O erro da saturação é finito; o de virar ∞ é infinito.</li>
+  </ul>
+</div>
+</section>
+
+<!-- 3 -->
+<section class="chap" id="ieee" data-title="IEEE 754">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Ponto flutuante IEEE 754</h2>
+  <p>O IEEE 754 (versão 2019 em <code>papers/</code> [3]) é o padrão de praticamente todo processador desde os anos 80. As instruções <code>vfadd.vv</code>, <code>vfmul.vv</code> etc. da RVV operam nele.</p>
+<pre><code>  ┌───┬──────────────┬─────────────────────────┐
+  │ S │ E (ne bits)  │       F (nf bits)       │
+  └───┴──────────────┴─────────────────────────┘
+   sinal  expoente           fração
+
+  normal:  valor = (−1)^S × 1,F × 2^(E − bias)     bias = 2^(ne−1) − 1</code></pre>
+  <p>O expoente é guardado com <span class="g" data-g="bias" tabindex="0">viés</span> para ficar sempre como inteiro sem sinal, e o "1," inicial não é guardado (bit implícito).</p>
+  <h3>Casos especiais</h3>
+</div>
+<div class="tbl read"><table>
+  <thead><tr><th>E</th><th>F</th><th>Significado</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>0</td><td><b>±0</b>: existem dois zeros.</td></tr>
+    <tr><td>0</td><td>≠ 0</td><td><b><span class="g" data-g="subnormal" tabindex="0">Subnormal</span></b>: <code>0,F × 2^(1 − bias)</code>, sem o 1 implícito; preenche o buraco perto de zero.</td></tr>
+    <tr><td>todos 1</td><td>0</td><td><b>±∞</b></td></tr>
+    <tr><td>todos 1</td><td>≠ 0</td><td><b>NaN</b>: milhares de padrões diferentes significando a mesma coisa.</td></tr>
+    <tr><td>outros</td><td>qualquer</td><td>Normal</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <h3>Exemplo: 1,0 em FP16</h3>
+  <p>FP16 tem 1 bit de sinal, 5 de expoente (bias 15) e 10 de fração. 1,0 = 1,0 × 2⁰, então E = 0 + 15 = <code>01111</code> e F = 0: <code>0 01111 0000000000</code> = <code>0x3C00</code>.</p>
+  <h3>Formatos padronizados</h3>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Nome</th><th class="num">Bits</th><th class="num">ne</th><th class="num">nf</th><th class="num">bias</th><th class="num">Menor subnormal</th><th class="num">Menor normal</th><th class="num">Maior</th></tr></thead>
+  <tbody>
+    <tr><td>binary16 · FP16</td><td class="num">16</td><td class="num">5</td><td class="num">10</td><td class="num">15</td><td class="num">6,0×10⁻⁸</td><td class="num">6,1×10⁻⁵</td><td class="num">65.504</td></tr>
+    <tr><td>binary32 · FP32</td><td class="num">32</td><td class="num">8</td><td class="num">23</td><td class="num">127</td><td class="num">1,4×10⁻⁴⁵</td><td class="num">1,2×10⁻³⁸</td><td class="num">3,4×10³⁸</td></tr>
+    <tr><td>binary64 · FP64</td><td class="num">64</td><td class="num">11</td><td class="num">52</td><td class="num">1023</td><td class="num">4,9×10⁻³²⁴</td><td class="num">2,2×10⁻³⁰⁸</td><td class="num">1,8×10³⁰⁸</td></tr>
+    <tr><td>binary128 · Float128</td><td class="num">128</td><td class="num">15</td><td class="num">112</td><td class="num">16383</td><td class="num">6,5×10⁻⁴⁹⁶⁶</td><td class="num">3,4×10⁻⁴⁹³²</td><td class="num">1,2×10⁴⁹³²</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>O <b>Float128</b> é a referência de "valor verdadeiro" na Fase 3: com 112 bits de fração, o erro dele some perto do erro dos formatos de 8 a 32 bits.</p>
+  <h3>Modos de arredondamento e exceções: estado no processador</h3>
+  <p>O IEEE 754 exige [3, §4.3 e §7] cinco modos de arredondamento (mais próximo/empate par, mais próximo/empate longe do zero, para +∞, para −∞, para zero) e cinco exceções sinalizadas por flags "grudentas": <b>invalid</b>, <b>divideByZero</b>, <b>overflow</b>, <b>underflow</b> e <b>inexact</b>.</p>
+  <p>No RISC-V isso vira o <span class="g" data-g="csrreg" tabindex="0">CSR</span> <code>fcsr</code>: o modo em <code>frm</code> (3 bits) e as flags em <code>fflags</code> (5 bits). Toda instrução de ponto flutuante, escalar ou vetorial, lê <code>frm</code> e atualiza <code>fflags</code>. Isso volta no <a href="#rvv">capítulo sobre a RVV</a>.</p>
+  <div class="quiz" data-answer="2">
+    <div class="q">Quantas representações diferentes do zero existem no FP16?</div>
+    <div class="opts"><button>Uma</button><button>Nenhuma, o zero é subnormal</button><button>Duas: +0 e −0</button></div>
+    <div class="why" hidden>Com E = 0 e F = 0 o bit de sinal ainda pode ser 0 ou 1, então existem +0 (<code>0x0000</code>) e −0 (<code>0x8000</code>). Posit e takum têm um único zero.</div>
+  </div>
+</div>
+</section>
+
+<!-- 4 -->
+<section class="chap" id="ia" data-title="Formatos para IA">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Os formatos baratos para IA: bfloat16, TF32 e FP8</h2>
+  <p>Redes neurais toleram pouca precisão mas precisam de faixa. O FP16 estoura em 65.504, então a indústria criou variações do IEEE 754 que só mudam a divisão de bits entre expoente e fração.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Formato</th><th class="num">Bits</th><th class="num">ne</th><th class="num">nf</th><th class="num">Maior</th><th class="num">Menor normal</th><th>Observações</th></tr></thead>
+  <tbody>
+    <tr><td>FP16</td><td class="num">16</td><td class="num">5</td><td class="num">10</td><td class="num">65.504</td><td class="num">6,1×10⁻⁵</td><td>Padrão IEEE</td></tr>
+    <tr><td>bfloat16 (Google)</td><td class="num">16</td><td class="num">8</td><td class="num">7</td><td class="num">3,4×10³⁸</td><td class="num">1,2×10⁻³⁸</td><td>Os 16 bits de cima do FP32: mesma faixa, pouca precisão. Muitas vezes sem subnormais.</td></tr>
+    <tr><td>TF32 (NVIDIA)</td><td class="num">19</td><td class="num">8</td><td class="num">10</td><td class="num">3,4×10³⁸</td><td class="num">1,2×10⁻³⁸</td><td>Formato interno dos tensor cores</td></tr>
+    <tr><td>OFP8 E4M3</td><td class="num">8</td><td class="num">4</td><td class="num">3</td><td class="num">448</td><td class="num">2⁻⁶ ≈ 0,0156</td><td>Sem ∞; um único NaN por sinal (<code>S.1111.111</code>)</td></tr>
+    <tr><td>OFP8 E5M2</td><td class="num">8</td><td class="num">5</td><td class="num">2</td><td class="num">57.344</td><td class="num">6,1×10⁻⁵</td><td>∞ e NaN como no IEEE</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p><span class="g" data-g="ofp8" tabindex="0">OFP8</span> é a especificação de 8 bits do Open Compute Project. Repare que E4M3 e E5M2 são apostas opostas na mesma troca precisão × faixa, assim como FP16 e bfloat16. Cada formato exige do processador:</p>
+  <ul>
+    <li>instruções de conversão próprias (de/para FP16, FP32, inteiros…);</li>
+    <li>regras próprias de casos especiais (E4M3 não tem ∞; E5M2 tem);</li>
+    <li>às vezes instruções exclusivas: o AVX10.2 tem conversões "com viés" só para FP8 e divisões "sem exceção" só para bfloat16 [1, §III].</li>
+  </ul>
+  <p>O artigo [1] chama isso de <b>fragmentação</b> da ISA.</p>
+</div>
+</section>
+
+<!-- 5 -->
+<section class="chap" id="gustafson" data-title="Problemas do IEEE 754">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>O que há de errado com o IEEE 754?</h2>
+  <p>John Gustafson, criador dos posits, propôs 10 critérios para um bom sistema numérico. Hunhold usa a mesma régua [2, §1.1].</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th class="num">#</th><th>Critério</th><th>O que significa</th><th>IEEE 754</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td><b>Distribuição</b></td><td>Os números devem estar onde os cálculos acontecem; todo padrão de bits deve ser útil.</td><td><span class="no">não</span>: FP64 gasta ~82% dos padrões em magnitudes acima de 10⁵⁵ ou abaixo de 10⁻⁵⁵; FP16/FP32 têm faixa curta.</td></tr>
+    <tr><td class="num">2</td><td><b>Unicidade</b></td><td>Um valor, um padrão de bits.</td><td><span class="no">não</span>: ±0 e muitos NaNs (~3% dos padrões do FP16).</td></tr>
+    <tr><td class="num">3</td><td><b>Generalidade</b></td><td>Definido para qualquer número de bits.</td><td><span class="no">não</span>: ne e nf escolhidos à mão para cada tamanho.</td></tr>
+    <tr><td class="num">4</td><td><b>Sem estado</b></td><td>Resultado depende só das entradas.</td><td><span class="no">não</span>: depende do modo de arredondamento e gera flags.</td></tr>
+    <tr><td class="num">5</td><td><b>Exatidão</b></td><td>Operações não erram mais que a precisão do formato.</td><td>parcial</td></tr>
+    <tr><td class="num">6</td><td><b>Monotonicidade binária</b></td><td>Ler os bits como inteiro com sinal dá a mesma ordem dos reais.</td><td><span class="no">não</span>: sinal-magnitude deixa os negativos invertidos.</td></tr>
+    <tr><td class="num">7</td><td><b>Negação binária</b></td><td>Negar em complemento de 2 nega o real.</td><td><span class="no">não</span>: nega-se trocando o bit de sinal.</td></tr>
+    <tr><td class="num">8</td><td><b>Flexibilidade</b></td><td>Converter entre tamanhos é fácil.</td><td><span class="no">não</span>: muda bias e tamanho do expoente.</td></tr>
+    <tr><td class="num">9</td><td><b>Propagação de NaR</b></td><td>Um não-real contamina tudo depois.</td><td><span class="no">não</span>: <code>pow(NaN, 0) = 1</code>.</td></tr>
+    <tr><td class="num">10</td><td><b>Implementação simples</b></td><td>Pouco hardware, energia e latência.</td><td><span class="no">não</span>: subnormais, NaNs, ±0, ∞ e flags custam hardware.</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <div class="note"><p>Os critérios 6 e 7 importam para o hardware: se o formato se ordena como inteiro com sinal, comparar, <code>min</code>, <code>max</code> e negar usam <b>o mesmo circuito da ALU de inteiros</b>. O artigo [1, §IV-A] sugere que a separação entre comparações "de inteiro" e "de ponto flutuante" deixaria de ser necessária.</p></div>
+</div>
+</section>
+
+<!-- 6 -->
+<section class="chap" id="afunilada" data-title="Precisão afunilada">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Precisão afunilada</h2>
+  <p>Os números que mais aparecem em cálculos têm magnitude perto de 1. Então vale dar mais bits de fração para eles e menos para os gigantes e minúsculos. Para isso, <b>o campo de expoente passa a ter tamanho variável</b>: perto de 1 ele é curto e sobra espaço para a fração; longe de 1 ele cresce.</p>
+  <p>O gráfico abaixo mostra quantos bits de fração cada formato tem em cada magnitude. Troque o tamanho e passe o mouse para ler os valores.</p>
+</div>
+
+<div class="lab wide" id="lab-chart">
+  <div class="lab-head"><h4>Bits de fração ao longo da faixa</h4><span class="tag">Laboratório 1</span></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Tamanho"><button data-n="8">8 bits</button><button data-n="16" aria-pressed="true">16 bits</button><button data-n="32">32 bits</button></div>
+    <span class="small muted">Eixo x: expoente e de 2^e (|x| ≈ 2^e). 2^±100 ≈ 10^±30, 2^±200 ≈ 10^±60.</span>
+  </div>
+  <div class="chart-legend" id="chart-legend"></div>
+  <div class="chart-wrap" id="chart-wrap"><svg id="chart" viewBox="0 0 900 320" role="img" aria-label="Bits de fração por expoente para cada formato"></svg><div class="chart-tip" id="chart-tip" hidden></div></div>
+  <p class="small muted" style="margin:10px 0 0">Cada linha termina onde a faixa do formato acaba. No takum de 8 bits, regiões em 0 só representam alguns expoentes (os bits que faltam são fantasmas).</p>
+</div>
+
+<div class="read">
+  <p>Dois termos do livro <i>Every Bit Counts</i> [4]:</p>
+  <ul>
+    <li><b><span class="g" data-g="fovea" tabindex="0">Fóvea</span>:</b> a região perto de 1 com o máximo de bits de fração (o nome vem da região de maior resolução da retina).</li>
+    <li><b><span class="g" data-g="golden" tabindex="0">Zona Dourada</span>:</b> a região em que o formato é pelo menos tão preciso quanto o IEEE 754 de mesmo tamanho. Para o posit32 vai de 2⁻²⁰ a 2²⁰ [4, §13.4.1].</li>
+  </ul>
+  <p>O preço: o número de bits de fração depende do valor, e o hardware precisa decodificar o campo de expoente antes de saber onde a fração começa. <b>A diferença fundamental entre posit e takum é como esse campo variável é codificado.</b></p>
+</div>
+</section>
+
+<!-- 7 -->
+<section class="chap" id="posit" data-title="Posits">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Posits</h2>
+  <p>Criados por Gustafson e Yonemoto em 2017, padronizados em 2022 (<code>papers/posit_standard-2.pdf</code> [5]). O livro <i>Every Bit Counts</i> [4] é a referência didática.</p>
+<pre><code>  ┌───┬─────────────────────┬─────┬────────────────┐
+  │ S │ R R R … R  R̄        │ E E │  F F F … F     │
+  └───┴─────────────────────┴─────┴────────────────┘
+   sinal  regime (unário)    2 bits  fração (o que sobrar)
+
+  positivo:  valor = (1 + f) × 2^(4r + e)</code></pre>
+  <ul>
+    <li><b>Regime:</b> <i>k</i> bits iguais terminados por um bit diferente, como contar com risquinhos. Bits <code>1</code> dão <code>r = k − 1</code>; bits <code>0</code> dão <code>r = −k</code>. Cada unidade de regime multiplica por 16.</li>
+    <li><b>E:</b> 2 bits de expoente (0 a 3).</li>
+    <li><b>F:</b> o que sobrar. Regime longo, fração curta ou nenhuma.</li>
+    <li>Bits que caem para fora do final valem 0 (<span class="g" data-g="ghost" tabindex="0">ghost bits</span>).</li>
+    <li>Só dois casos especiais: <code>000…0</code> = 0 e <code>100…0</code> = NaR.</li>
+  </ul>
+  <p>Experimente no <a href="#lab-decoder">decodificador do capítulo Takum</a>: ele mostra o valor posit dos mesmos bits.</p>
+  <h3>Vantagens</h3>
+  <ul>
+    <li>Um zero, um NaR, sem subnormais, sem ∞, <b>um só modo de arredondamento e nenhuma flag</b> (o padrão diz que exceções não implicam flags de status [5, §2]).</li>
+    <li>Ordem de inteiro com sinal e negação por complemento de 2.</li>
+    <li><b><span class="g" data-g="quire" tabindex="0">Quire</span>:</b> acumulador de ponto fixo de 16·n bits que soma produtos sem nenhum arredondamento até ~2³¹ termos [5, §3.2]. Compare com <code>vtdot.vv</code>, que pede acúmulo em precisão ampliada.</li>
+  </ul>
+  <h3>Problemas que motivaram o takum</h3>
+  <ol>
+    <li><b>Regime unário é caro longe de 1.</b> Para números grandes ele come quase todos os bits. Um posit32 perto de 10³⁶ não tem fração.</li>
+    <li><b>Faixa curta com poucos bits:</b> posit8 vai de 6×10⁻⁸ a 1,7×10⁷. A constante de Planck (6,6×10⁻³⁴) não cabe num posit16 [2, Tab. 5].</li>
+    <li><b>Decodificador caro:</b> o regime pode ocupar a palavra inteira, então é preciso um contador de zeros/uns à esquerda e um deslocador do tamanho da palavra, um decodificador por tamanho [1, §I].</li>
+    <li><b>A faixa cresce sem parar com n:</b> posit64 chega a 10⁷⁴; bits que poderiam virar precisão vão para magnitudes que ninguém usa.</li>
+  </ol>
+</div>
+</section>
+
+<!-- 8 -->
+<section class="chap" id="takum" data-title="Takum">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Takum, o formato do projeto</h2>
+  <p>Proposto por Laslo Hunhold em 2024 [2]. O nome vem do islandês <i>takmarkað umfang</i>, "faixa limitada". A ideia central:</p>
+  <p class="thesis">Alcançar logo uma faixa suficiente para qualquer aplicação (~10⁻⁷⁷ a 10⁷⁷ na versão linear) e, a partir daí, transformar todo bit a mais em precisão.</p>
+  <p>Por que essa faixa? A constante cosmológica (≈ 10⁻⁵²) e a massa do universo observável (≈ 10⁵³) cabem nela, e é comum reescalar unidades (parsec, elétron-volt) para trazer números para perto de 1 [2, §1.2]. O expoente máximo é 255 = 2⁸ − 1, cujo tamanho em bits pode ser codificado com só <b>3 bits de regime</b>.</p>
+
+  <h3>Os campos S, D, R, C, F</h3>
+<pre><code>  ┌───┬───┬──────────┬───────────────┬──────────────────────────┐
+  │ S │ D │ R2 R1 R0 │  C (r bits)   │   F  (p = n − 5 − r bits)│
+  └───┴───┴──────────┴───────────────┴──────────────────────────┘
+    1   1      3        r ∈ {0…7}
+  └───────────── no máximo 12 bits ─────────┘</code></pre>
+</div>
+<div class="tbl read"><table>
+  <thead><tr><th>Campo</th><th class="num">Bits</th><th>Função</th></tr></thead>
+  <tbody>
+    <tr><td><span class="bit S" style="width:22px;height:22px;font-size:.7rem">S</span> sinal</td><td class="num">1</td><td>0 positivo, 1 negativo</td></tr>
+    <tr><td><span class="bit D" style="width:22px;height:22px;font-size:.7rem">D</span> direção</td><td class="num">1</td><td>Em positivos: 1 se |x| ≥ 1, 0 se |x| &lt; 1</td></tr>
+    <tr><td><span class="bit R" style="width:22px;height:22px;font-size:.7rem">R</span> regime</td><td class="num">3</td><td>Quantos bits de característica vêm a seguir: r de 0 a 7</td></tr>
+    <tr><td><span class="bit C" style="width:22px;height:22px;font-size:.7rem">C</span> característica</td><td class="num">0 a 7</td><td>O expoente, em binário posicional</td></tr>
+    <tr><td><span class="bit F" style="width:22px;height:22px;font-size:.7rem">F</span> fração</td><td class="num">resto</td><td>Os bits significativos</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p><b>Comparando com o posit:</b> o posit diz o tamanho do expoente em unário, que pode gastar a palavra inteira. O takum diz o tamanho em binário com 3 bits fixos, então o cabeçalho S+D+R+C tem no máximo 1+1+3+7 = <b>12 bits, sempre</b>.</p>
+
+  <h3>As fórmulas, passo a passo (takum linear)</h3>
+  <p>Para <i>n</i> bits. Se n &lt; 12, completa-se com zeros à direita até 12 (ghost bits).</p>
+<pre><code>Passo 1, regime:          r = R          se D = 1
+                          r = 7 − R      se D = 0
+
+Passo 2, característica:  c = 2^r − 1 + C          se D = 1   → c ∈ {0 … 254}
+                          c = −2^(r+1) + 1 + C     se D = 0   → c ∈ {−255 … −1}
+
+Passo 3, fração:          p = n − 5 − r,   f = F / 2^p ∈ [0, 1)
+
+Passo 4, valor:           e = (−1)^S × (c + S)
+                          valor = [(1 − 3S) + f] × 2^e
+
+Casos especiais:          000…0 = 0      100…0 = NaR</code></pre>
+  <p>Intuição do passo 2 com D = 1: é o número "1C" (um 1 implícito na frente de C) menos 1. r = 0 dá c = 0; r = 1 dá c ∈ {1, 2}; r = 2 dá c ∈ {3…6}; r = 7 dá c ∈ {127…254}.</p>
+  <p>Para S = 0, <code>valor = (1 + f) × 2^c</code>, igual a um float normal. Para S = 1, <code>valor = (−2 + f) × 2^e</code>; essa forma é o que faz a negação ser complemento de 2. <b>Atalho prático:</b> para decodificar um negativo, faça o complemento de 2 da palavra, decodifique como positivo e troque o sinal.</p>
+</div>
+
+<div class="lab wide" id="lab-decoder">
+  <div class="lab-head"><h4>Decodificador takum interativo</h4><span class="tag">Laboratório 2</span></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Tamanho do takum"><button data-dn="8" aria-pressed="true">T8</button><button data-dn="16">T16</button><button data-dn="32">T32</button></div>
+    <div class="seg" role="group" aria-label="Variante"><button data-dm="lin" aria-pressed="true">linear</button><button data-dm="log">logarítmico</button></div>
+    <label class="small" for="dec-ex">Exemplo</label>
+    <select id="dec-ex">
+      <option value="">escolha…</option>
+      <option value="one">1</option><option value="onep">1,125</option><option value="two">2</option><option value="big">2¹⁵</option><option value="half">0,9375</option>
+      <option value="max">maior positivo</option><option value="min">menor positivo</option><option value="neg">−1</option><option value="zero">0</option><option value="nar">NaR</option>
+    </select>
+    <button class="btn" id="dec-neg" title="Complemento de 2 da palavra inteira">−x (complemento de 2)</button>
+    <button class="btn" id="dec-dn" title="Inteiro − 1">anterior</button>
+    <button class="btn" id="dec-up" title="Inteiro + 1">próximo</button>
+    <button class="btn" id="dec-inv" title="Complemento de 2 de tudo menos o sinal" hidden>1/x (só log)</button>
+  </div>
+  <p class="small muted" style="margin:0 0 8px">Clique nos bits para invertê-los. As cores mostram como os campos se reorganizam; os quadrados tracejados são ghost bits.</p>
+  <div class="bitrow" id="dec-bits" aria-label="Bits do takum"></div>
+  <div class="bitidx" id="dec-idx" aria-hidden="true"></div>
+  <div class="decode-grid">
+    <div class="steps" id="dec-steps" aria-live="polite"></div>
+    <div>
+      <div class="small muted">Valor do takum</div>
+      <div class="bigval" id="dec-val">1</div>
+      <div class="cmp" id="dec-cmp"></div>
+    </div>
+  </div>
+</div>
+
+<div class="read">
+  <h3>Exemplos em T8, conferidos com o modelo de referência</h3>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Bits</th><th class="num">r</th><th class="num">c</th><th class="num">f</th><th class="num">Takum8</th><th class="num">Mesmos bits em posit8</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">0 1 000 000</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num">1</td></tr>
+    <tr><td class="mono">0 1 000 001</td><td class="num">0</td><td class="num">0</td><td class="num">1/8</td><td class="num">1,125</td><td class="num">1,125</td></tr>
+    <tr><td class="mono">0 1 001 000</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">2</td><td class="num">2</td></tr>
+    <tr><td class="mono">0 1 010 000</td><td class="num">2</td><td class="num">3</td><td class="num">0</td><td class="num">8</td><td class="num">4</td></tr>
+    <tr><td class="mono">0 1 100 000</td><td class="num">4</td><td class="num">15</td><td class="num">0</td><td class="num">32.768</td><td class="num">16</td></tr>
+    <tr><td class="mono">0 0 111 111</td><td class="num">0</td><td class="num">−1</td><td class="num">7/8</td><td class="num">0,9375</td><td class="num">0,9375</td></tr>
+    <tr><td class="mono">0 1 111 111</td><td class="num">7</td><td class="num">239</td><td class="num">0</td><td class="num">2²³⁹ ≈ 8,8×10⁷¹</td><td class="num">2²⁴ ≈ 1,7×10⁷</td></tr>
+    <tr><td class="mono">0 0 000 001</td><td class="num">7</td><td class="num">−239</td><td class="num">0</td><td class="num">2⁻²³⁹ ≈ 1,1×10⁻⁷²</td><td class="num">2⁻²⁴ ≈ 6×10⁻⁸</td></tr>
+    <tr><td class="mono">1 1 000 000</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">−1</td><td class="num">−1</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>O maior T8 (<code>0 1 111 111</code>): R = 111 pede 7 bits de característica; só 3 são explícitos (<code>111</code>) e os outros 4 são fantasmas, então C = <code>1110000</code> = 112 e c = 2⁷ − 1 + 112 = 239. O livro faz a mesma conta [4, §13.4.2]. Perto de 1 takum e posit coincidem; longe de 1 o takum8 alcança 2²³⁹ enquanto o posit8 para em 2²⁴.</p>
+
+  <h3>Propriedades provadas em [2, §4.5]</h3>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Propriedade</th><th>O que garante</th><th>Por que importa no hardware</th></tr></thead>
+  <tbody>
+    <tr><td><b>Unicidade</b> (Prop. 3)</td><td>Cada valor tem um único padrão de bits</td><td>Nada de ±0 ou NaNs redundantes</td></tr>
+    <tr><td><b>Monotonicidade</b> (Prop. 4)</td><td>Ordem dos bits como inteiro com sinal = ordem dos valores</td><td><code>min</code>, <code>max</code> e comparações usam o comparador de inteiros</td></tr>
+    <tr><td><b>Negação</b> (Prop. 6)</td><td>−x = complemento de 2 dos bits</td><td>Subtração reaproveita o negador de inteiros</td></tr>
+    <tr><td><b>Inversão</b> (Prop. 7, só logarítmico)</td><td>1/x = complemento de 2 de tudo exceto o sinal</td><td>Recíproco quase de graça</td></tr>
+    <tr><td><b>Ghost bits</b></td><td>Zeros à direita não mudam o valor</td><td>T8 → T16 → T32 é concatenar zeros; T32 → T16 é arredondar e cortar</td></tr>
+    <tr><td><b>Decodificador comum</b></td><td>O cabeçalho cabe nos 12 bits de cima</td><td>Um único decodificador de 12 bits serve T8, T16, T32 e T64</td></tr>
+    <tr><td><b>NaR é o menor</b> (Def. 7)</td><td><code>100…0</code> é o menor inteiro com sinal</td><td>Comparações sem caso especial; <code>while (residuo &lt; limite)</code> termina se aparecer NaR</td></tr>
+    <tr><td><b>Saturação</b> (§4.2)</td><td>Nada vira 0 ou ∞ por estouro</td><td>Sem flags de overflow e underflow</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>O decodificador pode ser uma tabela de 8 entradas indexada pelo regime: para cada r, uma máscara para extrair C e a posição onde a fração começa, uns 16 bytes no total [2, §5.2]. O posit, por comparação, precisa de um contador de bits e de um deslocador do tamanho da palavra.</p>
+
+  <h3>Bits de fração por tamanho</h3>
+</div>
+<div class="tbl read"><table>
+  <thead><tr><th>Formato</th><th>Bits de fração</th><th>Compare com</th></tr></thead>
+  <tbody>
+    <tr><td>T8</td><td>0 a 3 (3 perto de 1)</td><td>E4M3: 3 · E5M2: 2</td></tr>
+    <tr><td>T16</td><td>4 a 11</td><td>FP16: 10 · bfloat16: 7</td></tr>
+    <tr><td>T32</td><td>20 a 27</td><td>FP32: 23</td></tr>
+    <tr><td>T64</td><td>52 a 59</td><td>FP64: 52, então T64 nunca tem menos fração que FP64 [2, §4.5]</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Onde o takum tem pelo menos tanta fração quanto o concorrente (sai das fórmulas acima e do <a href="#lab-chart">gráfico</a>):</p>
+  <ul>
+    <li><b>T32 ≥ FP32</b> para 2⁻³¹ ≤ |x| &lt; 2³¹ (≈ 4,7×10⁻¹⁰ a 2,1×10⁹), indo até ~10⁷⁷.</li>
+    <li><b>T16 ≥ FP16</b> para 0,125 ≤ |x| &lt; 8; <b>T16 ≥ bfloat16</b> para 2⁻³¹ ≤ |x| &lt; 2³¹.</li>
+    <li><b>T8 = E4M3</b> (3 bits) para 0,5 ≤ |x| &lt; 2; <b>T8 ≥ E5M2</b> para 0,125 ≤ |x| &lt; 8.</li>
+  </ul>
+
+  <h3>Takum linear × logarítmico</h3>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th></th><th>Takum logarítmico (padrão do artigo)</th><th>Takum linear</th></tr></thead>
+  <tbody>
+    <tr><td>Valor</td><td><code>(−1)^S × √e^ℓ</code>, <code>ℓ = (−1)^S (c + m)</code></td><td><code>[(1 − 3S) + f] × 2^e</code></td></tr>
+    <tr><td>Base</td><td>√e ≈ 1,6487</td><td>2</td></tr>
+    <tr><td>Último campo</td><td>M (mantissa)</td><td>F (fração)</td></tr>
+    <tr><td>Faixa</td><td>≈ 4,2×10⁻⁵⁶ a 2,4×10⁵⁵</td><td>≈ 1,7×10⁻⁷⁷ a 5,8×10⁷⁶ (T8: 10^±72)</td></tr>
+    <tr><td>Multiplicação e divisão</td><td>Soma e subtração de inteiros</td><td>Como float</td></tr>
+    <tr><td>Soma e subtração</td><td>Difícil: logaritmo gaussiano (tabelas + interpolação)</td><td>Como float</td></tr>
+    <tr><td>Recíproco por bits</td><td>Sim (Prop. 7)</td><td>Não</td></tr>
+    <tr><td>Erro relativo máximo</td><td>≤ ⅔ do de um float com a mesma fração</td><td>Igual ao de um float com a mesma fração</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <div class="note"><p>A variante logarítmica tem capítulo próprio, <a href="#takumlog">Takum logarítmico</a>, e a escolha entre as duas é discutida em <a href="#escolha">Linear ou logarítmico?</a>, com um experimento e um assistente de decisão. Até lá, os exemplos usam o takum linear.</p></div>
+
+  <h3>Codificação: de float para takum</h3>
+  <p>Para um positivo <code>(1 + g) × 2^h</code>, com h ∈ {−255…254} (Algoritmo 4 de [2]):</p>
+<pre><code>D = (h ≥ 0)
+se D = 1:  r = ⌊log2(h + 1)⌋ ;  R = r     ;  C = h − 2^r + 1
+se D = 0:  r = ⌊log2(−h)⌋    ;  R = 7 − r ;  C = h + 2^(r+1) − 1
+bits = 0 | D | R (3 bits) | C (r bits) | fração g (n − 5 − r bits)
+arredonde para n bits; se o número era negativo, complemento de 2</code></pre>
+  <p><code>⌊log2(h+1)⌋</code> em hardware é a posição do 1 mais significativo: um <i>priority encoder</i> de 8 bits.</p>
+  <p><b>Arredondamento</b> [2, Alg. 1]: por causa da monotonicidade, arredonda-se a palavra de bits como inteiro (gera-se o padrão com um bit a mais e soma-se 1 se preciso), depois satura-se: se virou 0 sem x ser 0, vira o menor positivo; se virou NaR sem x ser NaR, vira o maior. O padrão posit usa empate para o par com bit sticky; o grupo deve escolher e documentar a regra de desempate.</p>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">Um decodificador takum precisa olhar quantos bits para separar S, D, R e C, seja T8, T16 ou T32?</div>
+    <div class="opts"><button>Todos os n bits, como no posit</button><button>No máximo os 12 bits mais significativos</button><button>Só os 5 primeiros</button></div>
+    <div class="why" hidden>S (1) + D (1) + R (3) + C (até 7) = 12 bits. Tudo depois disso é fração, por isso um decodificador serve todos os tamanhos.</div>
+  </div>
+
+  <h3>Modelo de referência em Python</h3>
+  <p>Foi usado para conferir os exemplos deste documento. Ele confirmou, para todos os padrões de T8 e T16, que a negação é o complemento de 2 e que a ordem dos valores é a ordem dos inteiros com sinal. Serve de oráculo nos testes da Fase 1.</p>
+<pre id="pycode"><button class="btn copy" data-copy="pycode">Copiar</button><code>from fractions import Fraction
+
+def takum_linear_decode(bits: int, n: int):
+    """Decodifica um takum LINEAR de n bits. Retorna 0, 'NaR' ou um Fraction exato."""
+    N = max(n, 12)
+    b = bits &lt;&lt; (N - n)                      # ghost bits: completa com zeros até 12
+    if b == 0:
+        return 0
+    if b == 1 &lt;&lt; (N - 1):
+        return 'NaR'
+    S = (b &gt;&gt; (N - 1)) &amp; 1
+    D = (b &gt;&gt; (N - 2)) &amp; 1
+    R = (b &gt;&gt; (N - 5)) &amp; 0b111
+    r = R if D else 7 - R                    # nº de bits de característica
+    C = (b &gt;&gt; (N - 5 - r)) &amp; ((1 &lt;&lt; r) - 1)
+    c = (2**r - 1 + C) if D else (-2**(r + 1) + 1 + C)
+    p = N - 5 - r                            # nº de bits de fração
+    f = Fraction(b &amp; ((1 &lt;&lt; p) - 1), 2**p)
+    e = (-1)**S * (c + S)
+    return ((1 - 3 * S) + f) * Fraction(2)**e
+
+# takum_linear_decode(0b01000000, 8) -&gt; 1
+# takum_linear_decode(0b01111111, 8) -&gt; 2**239</code></pre>
+</div>
+</section>
+
+<!-- 9 -->
+<section class="chap" id="aritmetica" data-title="Aritmética">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Como fazer soma e multiplicação</h2>
+  <p>Como o takum linear tem a forma <code>(1 + f) × 2^e</code>, a Fase 1 pode ser montada assim:</p>
+</div>
+<div class="pipe wide">
+  <div><b>Decodificador</b>12 bits de cima → sinal, expoente e (9 bits com sinal), significando 1.f</div>
+  <div class="hl"><b>Núcleo FP</b>Soma ou multiplicação como numa FPU, sem subnormais, ∞ ou NaNs</div>
+  <div><b>Arredonda</b>Guard, round, sticky; regra de desempate escolhida</div>
+  <div><b>Codificador</b>Monta S D R C F, satura se e sair de −255…254</div>
+</div>
+<div class="read">
+  <p>O expoente é igual para todos os tamanhos (−255…254); só a largura da fração muda entre T8, T16 e T32. Antes de tudo, trate os casos especiais: entrada NaR dá NaR; zeros conforme a operação.</p>
+  <h3>Multiplicação</h3>
+<pre><code>sinal = sA XOR sB
+e     = eA + eB
+sig   = (1.fA) × (1.fB)                 → em [1, 4)
+se sig ≥ 2:  sig = sig / 2 ;  e = e + 1  (normaliza)
+codifica (sinal, e, sig) em n bits, arredondando; satura se e sair da faixa</code></pre>
+  <h3>Soma e subtração</h3>
+<pre><code>A − B = A + (−B), e −B é o complemento de 2 dos bits de B
+ordene para |A| ≥ |B|        (compare os bits sem sinal como inteiros)
+d = eA − eB
+alinhe: sigB = sigB &gt;&gt; d     (guardando guard/round/sticky)
+sinais iguais:     sig = sigA + sigB   (pode normalizar à direita)
+sinais diferentes: sig = sigA − sigB   (pode normalizar à esquerda: contador de zeros)
+codifica e arredonda</code></pre>
+  <h3>Por que <code>vtdot.vv</code> pede acúmulo em precisão ampliada</h3>
+  <p>Somar muitos produtos arredondando a cada passo acumula erro, e a ordem das somas muda o resultado. As saídas clássicas:</p>
+  <ul>
+    <li><b><span class="g" data-g="fma" tabindex="0">FMA</span>:</b> <code>a×b + c</code> com um único arredondamento.</li>
+    <li><b>Acumulador alargado:</b> T8×T8 acumulado em T16, como o <code>VDPPT8PT16</code> proposto em [1, Tab. IV].</li>
+    <li><b>Quire:</b> acumulador de ponto fixo largo, sem arredondar até o final. Para takum o expoente tem faixa fixa (−255…254), então o quire teria o mesmo tamanho para todas as precisões.</li>
+  </ul>
+  <details class="more"><summary>E no takum logarítmico?</summary>
+    <p style="margin-top:10px">Com <code>x = √e^ℓx</code> e <code>y = √e^ℓy</code>: <code>x·y = √e^(ℓx+ℓy)</code>, <code>x/y = √e^(ℓx−ℓy)</code>, <code>√x = √e^(ℓx/2)</code>, tudo soma ou deslocamento de inteiros. Mas <code>x + y = √e^(ℓx + Φ⁺(ℓx − ℓy))</code>, com <code>Φ⁺(q) = log√e(1 + √e^−q)</code>, uma função não linear calculada com tabelas e interpolação [2, §4.3]. O livro [4, cap. 8 e 9] trata de sistemas logarítmicos em detalhe.</p>
+  </details>
+</div>
+</section>
+
+<!-- takum logarítmico -->
+<section class="chap" id="takumlog" data-title="Takum logarítmico">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Takum logarítmico</h2>
+  <p>No artigo [2], a versão <b>padrão</b> do takum é a logarítmica; a linear aparece como alternativa (§4.7). Os campos S, D, R e C são os mesmos. O que muda é o significado do último campo e da conta final.</p>
+
+  <h3>A ideia: guardar o logaritmo do número</h3>
+  <p>Um <span class="g" data-g="lns" tabindex="0">sistema numérico logarítmico (LNS)</span> não guarda <i>x</i>; guarda <code>log(x)</code> como um número de ponto fixo. É a ideia das tábuas de logaritmo de Napier (1614) e da régua de cálculo: multiplicar vira somar.</p>
+  <p>A diferença aparece dentro de cada "binade" (o intervalo entre duas potências da base). No formato linear os valores representáveis ficam igualmente espaçados em <b>diferença</b>; no logarítmico, igualmente espaçados em <b>razão</b>. O desenho abaixo mostra os 8 valores de cada binade com 3 bits de fração:</p>
+</div>
+<div class="lab wide" id="lab-binade">
+  <div class="lab-head"><h4>Linear × logarítmico dentro de uma binade</h4><span class="tag">Visualização</span></div>
+  <div class="chart-wrap"><svg id="binade" viewBox="0 0 900 150" role="img" aria-label="Posições dos valores representáveis em binades linear e logarítmica"></svg></div>
+  <p class="small muted" style="margin:6px 0 0">Linear: 1, 1,125, 1,25 … 1,875 (passos iguais de 0,125). Logarítmico: √e^0, √e^0,125, … (cada passo multiplica por √e^0,125 ≈ 1,0645). No log o erro relativo é o mesmo em toda a binade; no linear ele "balança" por um fator 2 (de 2^−(p+1) perto de 1 até a metade disso perto de 2).</p>
+</div>
+<div class="read">
+  <h3>Definição</h3>
+<pre><code>Campos:      S | D | R (3 bits) | C (r bits) | M (p bits)     ← mesmos S, D, R, C
+
+Passos 1–2:  r e c exatamente como no takum linear
+Passo 3:     m = M / 2^p ∈ [0, 1)                           ← "mantissa"
+Passo 4:     ℓ = (−1)^S × (c + m)                            ← valor logarítmico
+Valor:       x = (−1)^S × √e^ℓ        com √e ≈ 1,6487
+
+Casos especiais: 000…0 = 0      100…0 = NaR</code></pre>
+  <p>Para um positivo, <code>ℓ = c + m</code> é literalmente o número de ponto fixo <b>"c,M"</b>: a característica é a parte inteira e a mantissa é a parte fracionária do logaritmo. É por isso que o artigo usa C e M, os nomes das tábuas de logaritmo. O valor <code>|x| = √e^ℓ = e^(ℓ/2)</code>, ou seja, <code>ℓ = 2·ln|x|</code>.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Bits (8)</th><th class="num">c</th><th class="num">m</th><th class="num">ℓ</th><th class="num">Takum log</th><th class="num">Takum linear (mesmos bits)</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">0 1 000 000</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num">1</td></tr>
+    <tr><td class="mono">0 1 000 001</td><td class="num">0</td><td class="num">0,125</td><td class="num">0,125</td><td class="num">√e^0,125 ≈ 1,0645</td><td class="num">1,125</td></tr>
+    <tr><td class="mono">0 1 000 100</td><td class="num">0</td><td class="num">0,5</td><td class="num">0,5</td><td class="num">√e^0,5 ≈ 1,2840</td><td class="num">1,5</td></tr>
+    <tr><td class="mono">0 1 001 000</td><td class="num">1</td><td class="num">0</td><td class="num">1</td><td class="num">√e ≈ 1,6487</td><td class="num">2</td></tr>
+    <tr><td class="mono">0 1 100 000</td><td class="num">15</td><td class="num">0</td><td class="num">15</td><td class="num">√e^15 ≈ 1.808,04</td><td class="num">32.768</td></tr>
+    <tr><td class="mono">1 0 111 100</td><td class="num">−1</td><td class="num">0,5</td><td class="num">0,5</td><td class="num">−1,2840</td><td class="num">−1,5</td></tr>
+    <tr><td class="mono">0 1 111 111</td><td class="num">239</td><td class="num">0</td><td class="num">239</td><td class="num">√e^239 ≈ 7,9×10⁵¹</td><td class="num">2²³⁹ ≈ 8,8×10⁷¹</td></tr>
+    <tr><td class="mono">0 0 000 001</td><td class="num">−239</td><td class="num">0</td><td class="num">−239</td><td class="num">≈ 1,3×10⁻⁵²</td><td class="num">≈ 1,1×10⁻⁷²</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Repare em <code>1 0 111 100</code>: é o complemento de 2 de <code>0 1 000 100</code> e vale exatamente o negativo dele. Negação por complemento de 2, monotonicidade e unicidade continuam valendo. Use o <a href="#lab-decoder">decodificador</a> no modo <b>logarítmico</b> para conferir à mão.</p>
+
+  <h3>Por que a base √e e não 2?</h3>
+  <ul>
+    <li><b>Faixa:</b> com ℓ ∈ (−255, 255), a base √e dá ≈ 4,2×10⁻⁵⁶ a 2,4×10⁵⁵, a faixa-alvo do artigo. A base e daria 10^±110, grande demais [2, §4.4].</li>
+    <li><b>Trocar de base é barato:</b> passar de √e para e é deslocar ℓ um bit (porque ln √e = 0,5). Com base 2 seria multiplicar por ln 2, que custa caro.</li>
+    <li><b>Funções elementares:</b> exp, ln, funções de ativação de redes neurais e os logaritmos gaussianos ficam mais simples na base natural.</li>
+    <li><b>Custo:</b> nenhuma potência de 2 diferente de 1 é exata. Nem o número 2 é representável: em T16 log ele vira 2,00042. O livro chama a resposta a essa objeção de "argumento da ida e volta": se converter 2 para o formato e voltar sempre devolve 2, nenhuma informação foi perdida [4, §8.8].</li>
+  </ul>
+
+  <h3>Multiplicar, dividir, inverter: quase de graça</h3>
+<pre><code>x · y   = (−1)^(s+s̃) √e^(ℓ + ℓ̃)        → soma de ponto fixo
+x / y   = (−1)^(s−s̃) √e^(ℓ − ℓ̃)        → subtração de ponto fixo
+1 / x   = (−1)^s √e^(−ℓ)                → complemento de 2 de D,R,C,M (Prop. 7)
+√|x|    = √e^(ℓ/2)                       → deslocamento à direita
+x²      = √e^(2ℓ)                        → deslocamento à esquerda</code></pre>
+  <p>Não há multiplicador de significandos. O resultado de uma multiplicação é exato com frequência: no livro, produtos de log posits de 5 bits são exatos em 59% dos casos, contra 38% nos lineares [4, §8.4].</p>
+
+  <h3>Somar e subtrair: o problema</h3>
+  <p>Suponha ℓ ≥ ℓ̃ e <code>q = ℓ − ℓ̃ ≥ 0</code>. Colocando o maior em evidência:</p>
+<pre><code>x + y = √e^ℓ · (1 + √e^−q)   ⇒   ℓ_soma = ℓ + Φ⁺(q),   Φ⁺(q) = log√e(1 + √e^−q) = 2·ln(1 + e^(−q/2))
+x − y = √e^ℓ · (1 − √e^−q)   ⇒   ℓ_dif  = ℓ + Φ⁻(q),   Φ⁻(q) = log√e(1 − √e^−q) = 2·ln(1 − e^(−q/2))</code></pre>
+  <p>Φ⁺ e Φ⁻ são os <span class="g" data-g="gauss" tabindex="0">logaritmos gaussianos</span>. São funções não lineares de uma variável, calculadas em hardware com <b>tabelas e interpolação</b> [2, §4.3]:</p>
+  <ul>
+    <li>Quando q é grande, Φ⁺(q) ≈ 2·e^(−q/2) fica menor que meio ULP e o menor operando simplesmente não altera o resultado. A tabela só precisa ir até um q máximo.</li>
+    <li><b>Φ⁻ explode perto de q = 0</b> (subtrair números quase iguais): Φ⁻(q) → −∞. É a região crítica do LNS, tratada com técnicas como a cotransformação.</li>
+    <li>O projeto do <i>European Logarithmic Microprocessor</i> (Coleman et al.) mostrou um LNS de 32 bits competitivo com float32 em latência [2, §4.3], [4, §8.4]. Acima de ~32 bits as tabelas deixam de escalar [2, §4.4].</li>
+    <li>No livro, somas de log posits de 5 bits são exatas em só 15% dos casos, contra 50% nos lineares [4, §8.4].</li>
+  </ul>
+</div>
+
+<div class="lab wide" id="lab-lns">
+  <div class="lab-head"><h4>Calculadora takum logarítmico</h4><span class="tag">Laboratório</span></div>
+  <div class="controls">
+    <label class="small" for="lns-x">x</label><input type="text" id="lns-x" value="3" size="8" inputmode="decimal">
+    <div class="seg" role="group" aria-label="Operação"><button data-op="+" aria-pressed="true">+</button><button data-op="-">−</button><button data-op="*">×</button><button data-op="/">÷</button></div>
+    <label class="small" for="lns-y">y</label><input type="text" id="lns-y" value="2.9" size="8" inputmode="decimal">
+    <div class="seg" role="group" aria-label="Tamanho"><button data-ln="8">T8</button><button data-ln="16" aria-pressed="true">T16</button></div>
+  </div>
+  <div class="controls">
+    <label class="small" for="lns-h">Tabela de Φ com passo</label>
+    <select id="lns-h"><option value="1">1</option><option value="0.25">1/4</option><option value="0.0625" selected>1/16</option><option value="0.015625">1/64</option><option value="0">sem tabela (Φ exato)</option></select>
+    <span class="small muted">interpolação linear entre os pontos da tabela</span>
+  </div>
+  <div class="decode-grid">
+    <div class="steps" id="lns-steps" aria-live="polite"></div>
+    <div>
+      <div class="small muted">Resultado em takum logarítmico</div>
+      <div class="bigval" id="lns-val">—</div>
+      <div class="cmp" id="lns-cmp"></div>
+    </div>
+  </div>
+  <p class="small muted" style="margin:10px 0 0">Experimente subtrair números próximos (3 − 2,9) com tabelas grossas para ver o problema de Φ⁻ perto de q = 0, e compare com a multiplicação, que nunca usa tabela.</p>
+</div>
+
+<div class="read">
+  <h3>Precisão e arredondamento</h3>
+  <ul>
+    <li><b>Erro relativo máximo</b> com p bits de mantissa: <code>λ(p) = √e^(2^(−p−1)) − 1 &lt; ⅔ · 2^(−p−1)</code> [2, Prop. 11]. Ou seja, até um terço menos que um float com a mesma fração, e sem a oscilação de fator 2 dentro da binade.</li>
+    <li>No experimento do livro com 16 bits, o erro relativo máximo cai de 0,0067 (takum linear) para 0,0039 (takum log) [4, §13.4.4].</li>
+    <li><b>Um só tipo de arredondamento:</b> o ponto médio entre dois vizinhos é a média geométrica, tanto nos bits de característica quanto nos de mantissa. Arredondar a palavra de bits como inteiro já faz isso. No takum linear e nos posits há dois tipos misturados: geométrico na parte do expoente e aritmético na fração [2, §4.2].</li>
+    <li><b>Estreitar (T16 → T8)</b> continua sendo arredondar a palavra e cortar bits.</li>
+  </ul>
+
+  <h3>Conversão de e para IEEE 754</h3>
+  <p>Aqui o logarítmico cobra caro: entrar e sair do formato exige logaritmo e exponencial [2, Alg. 2 e 3]:</p>
+<pre><code>float → takum log:  ℓ = 2 · (h · ln 2 + ln(1 + f))          (x = (1 + f) · 2^h)
+takum log → float:  t = ℓ / (2 ln 2) ;  h = ⌊t⌋ ;  f = 2^(t − h) − 1</code></pre>
+  <p>No simulador em software isso é uma chamada de <code>log</code>/<code>exp</code>. Em hardware, é uma unidade de função elementar. Na Fase 3 todas as matrizes saem de Float128, então essa conversão aparece em toda entrada e saída.</p>
+
+  <h3>Produto escalar e quire</h3>
+  <p>O quire, o acumulador exato dos posits, não se adapta bem ao LNS. Uma saída é um "quire bidimensional", um acumulador de ponto fixo para cada valor de mantissa, que cresce exponencialmente com o número de bits [4, §8.5]. Para <code>vtdot.vv</code> isso significa que o acúmulo em precisão ampliada fica mais difícil na versão logarítmica.</p>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">No takum logarítmico, qual operação precisa de tabela?</div>
+    <div class="opts"><button>Multiplicação</button><button>Soma e subtração</button><button>Inverso (1/x)</button></div>
+    <div class="why" hidden>Multiplicar é somar ℓ, inverter é complemento de 2 dos bits depois do sinal. Somar exige Φ±(q), uma função não linear, calculada por tabela e interpolação.</div>
+  </div>
+</div>
+</section>
+
+<!-- escolha -->
+<section class="chap" id="escolha" data-title="Linear ou logarítmico?">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Linear ou logarítmico?</h2>
+  <p>As duas variantes compartilham o que torna o takum interessante para a ISA: decodificador de 12 bits, faixa fixa, negação e comparação de inteiros, conversão entre tamanhos por bits. Elas diferem no núcleo aritmético e no custo de conversão.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Critério</th><th>Takum linear</th><th>Takum logarítmico</th><th>Peso neste projeto</th></tr></thead>
+  <tbody>
+    <tr><td>Soma e subtração (Fase 1)</td><td class="yes">FPU clássica: alinhar, somar, normalizar</td><td class="no">Logaritmo gaussiano: tabelas + interpolação; Φ⁻ crítico perto de 0</td><td>Alto: SpMV é metade somas</td></tr>
+    <tr><td>Multiplicação (Fase 1)</td><td>Multiplicador de significandos</td><td class="yes">Soma de ponto fixo</td><td>Alto</td></tr>
+    <tr><td>Divisão, 1/x, √x</td><td>Unidades dedicadas</td><td class="yes">Subtração, complemento de 2, deslocamento</td><td>Baixo: não estão no enunciado</td></tr>
+    <tr><td>Escala para T32</td><td class="yes">Igual ao FP32</td><td>Tabelas grandes; viável até ~32 bits com interpolação</td><td>Alto: T32 é obrigatório</td></tr>
+    <tr><td>Erro relativo máximo</td><td>2^−(p+1), oscila na binade</td><td class="yes">&lt; ⅔ disso, uniforme</td><td>Médio: no acúmulo a diferença diminui (veja o experimento)</td></tr>
+    <tr><td>Inteiros pequenos (2, 3, 10)</td><td class="yes">Exatos</td><td class="no">Aproximados (2 → 2,0004 em T16)</td><td>Médio: muitas matrizes têm entradas inteiras</td></tr>
+    <tr><td>Conversão IEEE ↔ takum</td><td class="yes">Remontar campos</td><td class="no">ln e exp</td><td>Médio: toda a Fase 3 parte de Float128</td></tr>
+    <tr><td><code>vtdot.vv</code> com acúmulo largo</td><td class="yes">Acumulador alargado ou quire</td><td class="no">Quire bidimensional, caro</td><td>Alto</td></tr>
+    <tr><td>Equivalência com RVV (<code>vfadd</code>, <code>vfmul</code>)</td><td class="yes">Direta</td><td>Semântica igual, hardware diferente</td><td>Médio (Fase 2)</td></tr>
+    <tr><td>Literatura</td><td>Definida em [2, §4.7]; gráficos de faixa de [1]</td><td>Variante padrão de [2]; livro [4, cap. 8–9]</td><td>Ambas citáveis</td></tr>
+    <tr><td>Simulador em software</td><td>Fácil</td><td>Fácil (Φ com log1p/exp)</td><td>Se o grupo for por simulador, dá para ter as duas</td></tr>
+  </tbody>
+</table></div>
+
+<div class="read">
+  <h3>Experimento: produtos escalares nas duas variantes</h3>
+  <p>Este laboratório faz, em escala pequena, o que a Fase 3 pede: calcula muitos produtos escalares <code>Σ aᵢ·bᵢ</code> (o miolo do SpMV) em cada formato, arredondando depois de cada multiplicação e de cada soma, e compara com o resultado em precisão dupla. A saída é a mesma curva de distribuição cumulativa da Fig. 3 de [1].</p>
+</div>
+<div class="lab wide" id="lab-exp">
+  <div class="lab-head"><h4>Produtos escalares: linear × logarítmico × IEEE</h4><span class="tag">Laboratório</span></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Tamanho"><button data-xn="8">8 bits</button><button data-xn="16" aria-pressed="true">16 bits</button></div>
+    <label class="small" for="exp-L">Comprimento</label>
+    <select id="exp-L"><option>8</option><option selected>32</option><option>128</option></select>
+    <label class="small" for="exp-a">Magnitudes de</label>
+    <select id="exp-a"><option value="1">10⁻¹ a 10¹</option><option value="2" selected>10⁻² a 10²</option><option value="4">10⁻⁴ a 10⁴</option><option value="8">10⁻⁸ a 10⁸</option></select>
+    <label class="small"><input type="checkbox" id="exp-mixed"> sinais mistos</label>
+    <label class="small"><input type="checkbox" id="exp-lut"> soma log por tabela (passo 1/16)</label>
+    <button class="btn" id="exp-run">Sortear de novo</button>
+  </div>
+  <div class="chart-legend" id="exp-legend"></div>
+  <div class="chart-wrap" id="exp-wrap"><svg id="exp-chart" viewBox="0 0 900 300" role="img" aria-label="Distribuição cumulativa do erro relativo"></svg><div class="chart-tip" id="exp-tip" hidden></div></div>
+  <div class="tbl" style="margin:12px 0 0"><table>
+    <thead><tr><th>Formato</th><th class="num">Mediana do erro</th><th class="num">90% dos casos abaixo de</th><th class="num">Falhas (∞ / NaN)</th></tr></thead>
+    <tbody id="exp-body"></tbody>
+  </table></div>
+  <p class="small muted" style="margin:10px 0 0">300 produtos escalares com valores sorteados (distribuição log-uniforme). Referência em precisão dupla, que é exata o bastante perto de formatos de 8 e 16 bits; na Fase 3 a referência será Float128. Falha = resultado infinito ou NaN (só IEEE; takums saturam).</p>
+</div>
+<div class="read">
+  <p>O que costuma aparecer:</p>
+  <ul>
+    <li><b>Linear × log:</b> curvas muito próximas. O logarítmico erra menos ao <b>representar</b> um número, mas no <b>acúmulo</b> cada soma é arredondada e a vantagem quase some.</li>
+    <li><b>Faixa estreita (10⁻² a 10²):</b> o FP16 pode ganhar dos takums de 16 bits. Somas e produtos chegam a 10⁴–10⁵, onde o takum16 tem 7 ou 8 bits de fração e o FP16 tem 10. É a precisão afunilada funcionando contra.</li>
+    <li><b>Faixa larga (10⁻⁸ a 10⁸):</b> FP16, E4M3 e E5M2 falham (∞ ou NaN) em todos os casos; os takums nunca falham.</li>
+  </ul>
+  <p>Ou seja, a diferença grande é entre takum e IEEE. Entre as duas variantes de takum a diferença numérica é pequena, e quem decide é o custo de hardware e de implementação.</p>
+
+  <h3>Assistente de decisão</h3>
+  <p>Responda pelo seu grupo. A recomendação muda conforme as respostas.</p>
+</div>
+<div class="lab wide" id="lab-decide">
+  <div class="lab-head"><h4>Qual variante escolher?</h4><span class="tag">Decisão</span></div>
+  <div class="decide" id="decide"></div>
+  <div class="thesis" id="decide-out" style="margin:14px 0 0;font-size:var(--step-0);line-height:1.5" aria-live="polite"></div>
+</div>
+</section>
+
+<!-- 10 -->
+<section class="chap" id="comparacao" data-title="Comparação geral">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Comparação geral entre os formatos</h2>
+  <p>Comece pelo conversor: digite um número (ou escolha uma constante) e veja como cada formato o representa e quanto erra.</p>
+</div>
+
+<div class="lab wide" id="lab-conv">
+  <div class="lab-head"><h4>Conversor comparativo</h4><span class="tag">Laboratório 3</span></div>
+  <div class="controls">
+    <label class="small" for="conv-in">Número</label>
+    <input type="text" id="conv-in" value="6.62607015e-34" size="18" inputmode="decimal" aria-describedby="conv-msg">
+    <div class="presets" id="conv-presets">
+      <button class="btn" data-v="0.1">0,1</button>
+      <button class="btn" data-v="3.14159265358979">π</button>
+      <button class="btn" data-v="1000">1.000</button>
+      <button class="btn" data-v="100000">100.000</button>
+      <button class="btn" data-v="2.99792458e8">c (luz)</button>
+      <button class="btn" data-v="1.602176634e-19">carga e</button>
+      <button class="btn" data-v="6.62607015e-34">Planck h</button>
+      <button class="btn" data-v="1.1056e-52">constante cosmológica</button>
+      <button class="btn" data-v="1.5e53">massa do universo</button>
+    </div>
+  </div>
+  <div class="small muted" id="conv-msg" style="margin-bottom:8px"></div>
+  <div class="tbl" style="margin:0"><table class="conv">
+    <thead><tr><th>Formato</th><th class="num">Valor representado</th><th>Erro relativo</th></tr></thead>
+    <tbody id="conv-body"></tbody>
+  </table></div>
+  <p class="small muted" style="margin:10px 0 0">Arredondamento para o vizinho mais próximo em valor; posits e takums saturam. É uma simplificação didática da regra exata de cada padrão.</p>
+</div>
+
+<div class="read"><h3>Características</h3></div>
+<div class="tbl wide"><table>
+  <thead><tr><th></th><th>IEEE 754 (FP16/32)</th><th>bfloat16 / OFP8</th><th>Posit (es = 2)</th><th>Takum linear</th></tr></thead>
+  <tbody>
+    <tr><td>Precisão</td><td>uniforme</td><td>uniforme</td><td>afunilada</td><td>afunilada</td></tr>
+    <tr><td>Tamanho do expoente</td><td>fixo</td><td>fixo</td><td>variável, regime unário</td><td>variável, regime binário de 3 bits</td></tr>
+    <tr><td>Zeros</td><td>+0 e −0</td><td>+0 e −0</td><td>1</td><td>1</td></tr>
+    <tr><td>Não-números</td><td>muitos NaN + ±∞</td><td>NaN (E4M3 sem ∞)</td><td>1 NaR</td><td>1 NaR</td></tr>
+    <tr><td>Subnormais</td><td>sim</td><td>depende</td><td>não</td><td>não</td></tr>
+    <tr><td>Overflow</td><td>±∞</td><td>±∞, NaN ou satura</td><td>satura</td><td>satura</td></tr>
+    <tr><td>Modos de arredondamento</td><td>5</td><td>5</td><td>1</td><td>1</td></tr>
+    <tr><td>Flags de exceção</td><td>5</td><td>5</td><td>nenhuma</td><td>nenhuma</td></tr>
+    <tr><td>Comparar = comparar inteiros</td><td class="no">não</td><td class="no">não</td><td class="yes">sim</td><td class="yes">sim</td></tr>
+    <tr><td>Negar = complemento de 2</td><td class="no">não</td><td class="no">não</td><td class="yes">sim</td><td class="yes">sim</td></tr>
+    <tr><td>Mudar de tamanho</td><td>reconverter campos</td><td>reconverter campos</td><td>completar ou cortar bits</td><td>completar ou cortar bits</td></tr>
+    <tr><td>Decodificador</td><td>um por formato</td><td>um por formato</td><td>um por tamanho, olha a palavra toda</td><td>um só, olha 12 bits</td></tr>
+  </tbody>
+</table></div>
+
+<div class="read"><h3>Maior valor positivo</h3></div>
+<div class="tbl wide"><table>
+  <thead><tr><th class="num">Bits</th><th>IEEE 754</th><th>Derivados</th><th class="num">Posit</th><th class="num">Takum linear</th></tr></thead>
+  <tbody>
+    <tr><td class="num">8</td><td>n/a</td><td>E4M3: 448 · E5M2: 57.344</td><td class="num">1,7×10⁷</td><td class="num">8,8×10⁷¹</td></tr>
+    <tr><td class="num">16</td><td>FP16: 65.504</td><td>bfloat16: 3,4×10³⁸</td><td class="num">7,2×10¹⁶</td><td class="num">5,6×10⁷⁶</td></tr>
+    <tr><td class="num">32</td><td>FP32: 3,4×10³⁸</td><td></td><td class="num">1,3×10³⁶</td><td class="num">5,8×10⁷⁶</td></tr>
+    <tr><td class="num">64</td><td>FP64: 1,8×10³⁰⁸</td><td></td><td class="num">4,5×10⁷⁴</td><td class="num">5,8×10⁷⁶</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>A faixa do takum já está quase completa em 8 bits e para de crescer a partir de 12. Daí em diante, cada bit novo vira fração.</p>
+  <h3>Resultados de [1]: o experimento que vamos estender</h3>
+  <p>Hunhold converteu as <b>1.401 matrizes</b> da SuiteSparse com até 50.000 não-zeros para cada formato, voltou para Float128 e mediu o erro relativo na norma 2 [1, §II, Fig. 3]:</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Tamanho</th><th>Resultado</th></tr></thead>
+  <tbody>
+    <tr><td>8 bits</td><td>E4M3 e E5M2 erram mais de 100% em ~45% e ~55% das matrizes (estouro de faixa). Posit8 fica abaixo de 100% em ~65%. <b>Takum8 fica abaixo de 100% em ~90%.</b></td></tr>
+    <tr><td>16 bits</td><td>Takum16 supera FP16 e bfloat16 em toda a distribuição; posit16 erra menos no início, mas é menos estável.</td></tr>
+    <tr><td>32 bits</td><td>Takum32 supera FP32 em toda a distribuição; posit32 tem uma região pior que FP32.</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Na ISA: o AVX10.2 tem <b>756 instruções</b>, 363 delas de ponto flutuante. Trocando todos os formatos por takum, os grupos F01 a F06 viram um único grupo e as conversões (grupo F07) viram uma família regular <code>VCVT…T(8|16|32|64)</code> [1, §IV-D].</p>
+  <div class="note"><p>A Fase 3 é a versão RVV desse experimento, com um passo a mais: em vez de só converter a matriz, <b>executamos</b> <code>y = A·x</code> com as instruções vetoriais.</p></div>
+</div>
+</section>
+
+<!-- 11 -->
+<section class="chap" id="simd" data-title="SIMD e AVX10.2">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>SIMD, vetores e o estudo de caso AVX10.2</h2>
+  <p><span class="g" data-g="simd" tabindex="0">SIMD</span> (Single Instruction, Multiple Data) é uma instrução que opera sobre vários dados de uma vez. Um registrador de 512 bits guarda 64 × T8, 32 × T16 ou 16 × T32, e <code>vtadd</code> soma todos os pares em paralelo, uma "pista" (<i>lane</i>) por elemento.</p>
+  <p>Formatos pequenos importam porque, com o mesmo registrador e a mesma banda de memória, 8 bits processam 4× mais elementos que 32 bits. Hoje o gargalo costuma ser mover dados, a chamada <b>parede de memória</b>, e por isso [1, §V] destaca os formatos de 8 e 16 bits.</p>
+  <h3>SIMD empacotado × ISA vetorial</h3>
+  <ul>
+    <li><b>Empacotado</b> (x86 SSE/AVX, ARM NEON): o tamanho do registrador está no opcode (<code>xmm</code> 128, <code>ymm</code> 256, <code>zmm</code> 512 bits). Cada largura nova gerou instruções novas.</li>
+    <li><b>Vetorial</b> (RISC-V V, ARM SVE): o código não depende do tamanho do registrador. O programa pergunta ao hardware quantos elementos cabem e faz o laço de acordo.</li>
+  </ul>
+  <h3>O problema do AVX10.2, resumido</h3>
+  <p>O AVX-512 ganhou mais de 20 sub-extensões opcionais; o AVX10 tentou unificá-las, e o AVX10.2 (2024) adicionou FP8 (E4M3 = "HF8", E5M2 = "BF8") e mais bfloat16. Resultado: nomes inconsistentes (H = half, S = single, D = double ou doubleword, Q = quadword…), conversões para cada par de formatos e instruções especiais por formato. A proposta de Hunhold:</p>
+  <ol>
+    <li><b>Agrupar</b> as instruções: bit a bit, máscara, inteiro, ponto flutuante, criptografia.</li>
+    <li><b>Nomes sistemáticos de tamanho:</b> B8…B64 (bits crus), U8…U64 (sem sinal), S8…S64 (com sinal).</li>
+    <li><b>Um formato numérico:</b> T8, T16, T32, T64.</li>
+    <li><b>Generalizar:</b> toda operação para todos os tamanhos, o que fica barato porque o decodificador é comum.</li>
+  </ol>
+  <p>Nosso projeto aplica o mesmo raciocínio à RVV, que já é bem mais regular que o x86.</p>
+</div>
+</section>
+
+<!-- 12 -->
+<section class="chap" id="rvv" data-title="RISC-V e RVV">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>RISC-V e a extensão vetorial (RVV)</h2>
+  <p>RISC-V é uma ISA aberta e modular: uma base inteira (RV32I/RV64I) mais extensões por letra: M (multiplicação), A (atômicas), F (FP32), D (FP64), Zfh (FP16), V (vetorial, versão 1.0 ratificada em 2021). Extensões novas começam com Z por convenção (<code>Zvfh</code> = FP16 em vetores; <code>Zvfbfmin</code> e <code>Zvfbfwma</code> = bfloat16 em vetores). Daí o nome da nossa proposta: <b>Zvtakum</b>.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Conceito</th><th>O que é</th></tr></thead>
+  <tbody>
+    <tr><td><code>v0…v31</code></td><td>32 registradores vetoriais</td></tr>
+    <tr><td><b>VLEN</b></td><td>Tamanho de cada registrador em bits, definido pelo hardware (128, 256, 512…)</td></tr>
+    <tr><td><b><span class="g" data-g="sew" tabindex="0">SEW</span></b></td><td>Tamanho de cada elemento (8, 16, 32, 64). <b>No Zvtakum, SEW = 8/16/32 corresponde a T8/T16/T32.</b></td></tr>
+    <tr><td><b><span class="g" data-g="lmul" tabindex="0">LMUL</span></b></td><td>Agrupa 1, 2, 4 ou 8 registradores como um só (ou usa frações de um)</td></tr>
+    <tr><td><b>VLMAX</b></td><td><code>VLEN × LMUL / SEW</code>: quantos elementos cabem</td></tr>
+    <tr><td><b>vl</b></td><td>Quantos elementos a instrução processa de fato (≤ VLMAX)</td></tr>
+    <tr><td><code>vsetvli</code></td><td>Configura SEW e LMUL e devolve vl</td></tr>
+    <tr><td><b>Máscara (v0)</b></td><td>Um bit por elemento dizendo se aquela pista executa</td></tr>
+    <tr><td><b>Widening / narrowing</b></td><td>Resultado com o dobro (<code>vfw…</code>) ou a metade (<code>vfn…</code>) do SEW das entradas</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Laço que funciona para qualquer VLEN (soma de vetores em FP32):</p>
+<pre><code># a0 = n, a1 = &amp;x, a2 = &amp;y, a3 = &amp;z        z[i] = x[i] + y[i]
+loop:
+    vsetvli  t0, a0, e32, m1, ta, ma   # t0 = vl = min(n, VLMAX), SEW = 32
+    vle32.v  v1, (a1)                  # carrega vl elementos de x
+    vle32.v  v2, (a2)                  # carrega vl elementos de y
+    vfadd.vv v3, v1, v2                # soma elemento a elemento  ← vtadd.vv no Zvtakum
+    vse32.v  v3, (a3)                  # grava z
+    sub      a0, a0, t0                # n -= vl
+    slli     t1, t0, 2                 # bytes = vl × 4
+    add      a1, a1, t1
+    add      a2, a2, t1
+    add      a3, a3, t1
+    bnez     a0, loop</code></pre>
+  <h3>Nomes e codificação</h3>
+  <p><code>vfadd.vv</code> = vetorial, float, add, operandos vetor-vetor. Outros sufixos: <code>.vf</code> (vetor e escalar float), <code>.vx</code> (vetor e escalar inteiro), <code>.vi</code> (imediato), <code>.wv</code> (primeiro operando largo). O formato OP-V é <code>funct6 | vm | vs2 | vs1 | funct3 | vd | opcode</code>: <code>funct3</code> diz o tipo de operandos e <code>funct6</code> a operação. A especificação RVV 1.0 [6] traz as tabelas; na Fase 2 será preciso escolher codificações livres para o Zvtakum.</p>
+  <h3>Mapeamento proposto pelo enunciado</h3>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>Zvtakum</th><th>Operação</th><th>Equivalente RVV hoje</th><th>Observação</th></tr></thead>
+  <tbody>
+    <tr><td><code>vtadd.vv</code></td><td>soma elemento a elemento</td><td><code>vfadd.vv</code></td><td></td></tr>
+    <tr><td><code>vtsub.vv</code></td><td>subtração</td><td><code>vfsub.vv</code></td><td>pode reusar vtadd + negação inteira</td></tr>
+    <tr><td><code>vtmul.vv</code></td><td>multiplicação</td><td><code>vfmul.vv</code></td><td></td></tr>
+    <tr><td><code>vtdot.vv</code></td><td>produto escalar com acúmulo largo</td><td>não há <code>vfdot</code> na RVV 1.0; usa-se <code>vfwmacc.vv</code> + <code>vfredusum</code>/<code>vfredosum</code></td><td>junta multiplicação, acúmulo alargado e redução</td></tr>
+    <tr><td><code>vncvt.t.t</code></td><td>conversão estreitando (T16 → T8)</td><td><code>vfncvt.f.f.w</code></td><td>no takum: arredondar a palavra e cortar bits</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Alargar (T8 → T16) é concatenar 8 zeros, sem lógica nenhuma. Na RVV com IEEE, cada par de formatos precisa da sua lógica de conversão.</p>
+  <h3>CSRs: onde o takum simplifica o estado da máquina</h3>
+  <p>CSR aqui é <i>Control and Status Register</i>, lido e escrito com <code>csrr</code>/<code>csrw</code>.</p>
+</div>
+<div class="tbl wide"><table>
+  <thead><tr><th>CSR</th><th>Conteúdo</th><th>Com Zvtakum</th></tr></thead>
+  <tbody>
+    <tr><td><code>fcsr.frm</code></td><td>Modo de arredondamento (3 bits, 5 modos); as instruções vetoriais de FP sempre usam este modo</td><td><b>Desnecessário:</b> takum tem um modo só</td></tr>
+    <tr><td><code>fcsr.fflags</code></td><td>Flags NV, DZ, OF, UF, NX</td><td><b>Desnecessário:</b> sem ∞ nem NaN sinalizador; overflow e underflow saturam; NaR se propaga pelo próprio valor</td></tr>
+    <tr><td><code>vtype</code>, <code>vl</code>, <code>vlenb</code>, <code>vstart</code></td><td>Configuração vetorial</td><td>Iguais (não dependem do formato)</td></tr>
+    <tr><td><code>vxrm</code>, <code>vxsat</code></td><td>Arredondamento e saturação de ponto fixo vetorial</td><td>Não envolvidos</td></tr>
+  </tbody>
+</table></div>
+<div class="read">
+  <p>Isso é a "redução na complexidade do registro de controle e status" do enunciado: uma instrução takum não lê <code>frm</code> nem escreve <code>fflags</code>; é uma função pura das entradas (critério 4). Também somem dependências entre instruções através do <code>fcsr</code>, o que simplifica o pipeline. É uma hipótese que a Fase 3 deve medir, por exemplo contando quantas instruções <code>csrr</code>/<code>csrw</code>/<code>fsrm</code> um kernel IEEE precisa e o kernel takum não.</p>
+  <div class="note warn"><p><b>Não confunda:</b> CSR também é o nome de um formato de matriz esparsa (<i>Compressed Sparse Row</i>, veja <a href="#avaliacao">Avaliação</a>). No relatório, deixe claro qual dos dois está em discussão.</p></div>
+  <div class="quiz" data-answer="0">
+    <div class="q">Por que <code>vtadd.vv</code> não precisaria atualizar <code>fflags</code>?</div>
+    <div class="opts"><button>Takum satura em vez de gerar ∞/0, não tem NaN sinalizador e tem um modo de arredondamento só</button><button>Porque instruções vetoriais nunca atualizam CSRs</button><button>Porque o takum não arredonda</button></div>
+    <div class="why" hidden>Instruções vetoriais de FP da RVV atualizam <code>fflags</code>, sim. O takum arredonda, mas sempre do mesmo jeito e sem sinalizar overflow, underflow ou NaN; o NaR viaja no próprio valor.</div>
+  </div>
+</div>
+</section>
+
+<!-- 13 -->
+<section class="chap" id="avaliacao" data-title="Avaliação: SpMV">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Como o projeto será avaliado</h2>
+  <h3>Matriz esparsa e o formato CSR</h3>
+  <p>Uma matriz é esparsa quando quase tudo é zero, por exemplo 10.000 × 10.000 com 50.000 não-zeros (0,05% preenchida). Guarda-se só o que não é zero. O formato mais comum é o <b>CSR, Compressed Sparse Row</b>. Passe o mouse (ou toque) numa célula ou numa linha:</p>
+</div>
+<div class="lab wide" id="lab-csr">
+  <div class="lab-head"><h4>Matriz esparsa em CSR e SpMV</h4><span class="tag">Laboratório 4</span></div>
+  <div class="csr">
+    <div>
+      <div class="small muted" style="margin-bottom:6px">A (4 × 4)</div>
+      <div class="mat" id="csr-mat"></div>
+    </div>
+    <div class="arrs">
+      <div class="arr" id="arr-val"><b>valores</b></div>
+      <div class="arr" id="arr-col"><b>col_idx</b></div>
+      <div class="arr" id="arr-ptr"><b>row_ptr</b></div>
+      <div class="arr" id="arr-x"><b>x</b></div>
+      <div class="rowsum" id="csr-sum">Escolha uma linha para ver o produto escalar dela.</div>
+    </div>
+  </div>
+</div>
+<div class="read">
+  <p><span class="g" data-g="spmv" tabindex="0">SpMV</span> é <code>y = A·x</code>. Cada linha é um <b>produto escalar</b>, por isso <code>vtdot.vv</code> é central na Fase 3:</p>
+<pre><code>y[i] = Σ valores[k] × x[col_idx[k]]      para k de row_ptr[i] até row_ptr[i+1] − 1</code></pre>
+  <p>O acesso <code>x[col_idx[k]]</code> é indireto, feito com as cargas indexadas (<i>gather</i>) da RVV: <code>vluxei</code>/<code>vloxei</code>. SpMV é o coração de solvers iterativos (gradiente conjugado, GMRES, Arnoldi) usados em fluidos, estruturas e química, por isso é um bom teste de aritmética de uso geral.</p>
+  <p>Matrizes: <b>SuiteSparse Matrix Collection</b> [7], a mesma usada em [1]. A ferramenta de Hunhold, <b>MuFoLAB</b> [8], automatiza esse benchmark em Julia.</p>
+  <h3>Medindo o erro</h3>
+  <ol>
+    <li>Calcule a referência <code>y_ref = A·x</code> em <b>Float128</b>.</li>
+    <li>Converta A e x para o formato testado e calcule <code>ỹ</code> nesse formato, com as instruções vetoriais do simulador.</li>
+    <li>Erro relativo na norma 2: <code>‖ỹ − y_ref‖₂ / ‖y_ref‖₂</code>, com <code>‖v‖₂ = √(Σ vᵢ²)</code>.</li>
+    <li>Repita para muitas matrizes e trace a <b>distribuição cumulativa</b>: eixo x = porcentagem das matrizes, eixo y = log10(erro), erros ordenados do menor para o maior (Fig. 3 de [1]). Melhor é a curva mais baixa e que vai mais longe antes de explodir. Marque ∞ quando os valores saem da faixa do formato.</li>
+  </ol>
+  <h3>Outras métricas</h3>
+  <ul>
+    <li><b>Contagem de instruções</b> do kernel com Zvtakum × RVV + IEEE, incluindo conversões e manipulação de <code>fcsr</code>.</li>
+    <li><b>Tamanho da ISA:</b> quantas instruções e variantes cada abordagem precisa para cobrir 8, 16 e 32 bits.</li>
+  </ul>
+</div>
+</section>
+
+<!-- 14 -->
+<section class="chap" id="proximos" data-title="Próximas fases">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>O que levar para as próximas fases</h2>
+  <h3>Decisões técnicas sugeridas (validar com o grupo)</h3>
+  <ol>
+    <li><b>Variante:</b> decidir com o <a href="#lab-decide">assistente de decisão</a>. Para RTL, a recomendação padrão é o takum linear.</li>
+    <li><b>Decodificador comum:</b> entrada = 12 bits mais significativos (T8 completado com zeros); saída = S, D, r (3 bits), c (9 bits com sinal, −255…254) e posição da fração, que se desloca no máximo 7 posições.</li>
+    <li><b>Negativos:</b> complemento de 2 antes de decodificar e depois de codificar.</li>
+    <li><b>Núcleo aritmético:</b> expoente de 9 bits com sinal e significando com guard/round/sticky, compartilhado por T8, T16 e T32.</li>
+    <li><b>Codificador:</b> priority encoder para achar r, montagem dos campos, arredondamento sobre a palavra, saturação.</li>
+    <li><b>Casos especiais:</b> só 0 e NaR.</li>
+    <li><b>Oráculo de testes:</b> o modelo Python do capítulo Takum.</li>
+  </ol>
+  <h3>Checklist de estudo</h3>
+  <p class="small muted">Marque o que você já consegue explicar. Fica salvo neste navegador.</p>
+  <div class="check-count" id="check-count"></div>
+  <div class="meter"><span id="check-meter"></span></div>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="ck1"> Por que existe ponto flutuante e qual a troca entre bits de expoente e de fração</label></li>
+    <li><label><input type="checkbox" id="ck2"> Normal, subnormal, ±0, ±∞ e NaN no IEEE 754; bias; bit implícito</label></li>
+    <li><label><input type="checkbox" id="ck3"> Modos de arredondamento, RNE, guard/round/sticky; flags de exceção e o fcsr</label></li>
+    <li><label><input type="checkbox" id="ck4"> Por que existem bfloat16, E4M3 e E5M2 e por que isso fragmenta a ISA</label></li>
+    <li><label><input type="checkbox" id="ck5"> Precisão afunilada, fóvea e zona dourada</label></li>
+    <li><label><input type="checkbox" id="ck6"> Regime unário do posit × regime binário de 3 bits do takum</label></li>
+    <li><label><input type="checkbox" id="ck7"> Decodificar à mão um T8 (S, D, R, C, F → valor)</label></li>
+    <li><label><input type="checkbox" id="ck8"> Por que um decodificador de 12 bits serve T8, T16 e T32</label></li>
+    <li><label><input type="checkbox" id="ck9"> Por que comparar e negar takums usa o hardware de inteiros</label></li>
+    <li><label><input type="checkbox" id="ck10"> Takum linear × logarítmico</label></li>
+    <li><label><input type="checkbox" id="ck13"> Logaritmo gaussiano Φ± e por que somar é difícil num LNS</label></li>
+    <li><label><input type="checkbox" id="ck14"> Critérios para escolher entre takum linear e logarítmico</label></li>
+    <li><label><input type="checkbox" id="ck11"> SEW, LMUL, vl e vsetvli na RVV; widening e narrowing</label></li>
+    <li><label><input type="checkbox" id="ck12"> SpMV em CSR, erro relativo na norma 2 e distribuição cumulativa</label></li>
+  </ul>
+</div>
+</section>
+
+<!-- 15 -->
+<section class="chap" id="glossario" data-title="Glossário">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Glossário</h2>
+  <label class="small" for="gfilter">Filtrar</label>
+  <input type="text" id="gfilter" placeholder="ex.: NaR, SEW…" style="margin:0 0 12px 8px">
+</div>
+<div class="tbl read"><table><thead><tr><th>Termo</th><th>Definição</th></tr></thead><tbody id="gtable"></tbody></table></div>
+</section>
+
+<!-- 16 -->
+<section class="chap" id="refs" data-title="Referências">
+<div class="read">
+  <div class="eyebrow">Capítulo</div>
+  <h2>Referências</h2>
+  <h3>Na pasta <code>papers/</code></h3>
+  <ol class="refs">
+    <li><b>[1]</b> L. Hunhold, "Streamlining SIMD ISA Extensions with Takum Arithmetic: A Case Study on Intel AVX10.2," MOCAST 2025, pp. 1–6. arXiv:2503.14067. <span class="file">papers/2503.14067v2.pdf</span><br><span class="small muted">Leia primeiro: 6 páginas e é o modelo do nosso projeto.</span></li>
+    <li><b>[2]</b> L. Hunhold, "Beating Posits at Their Own Game: Takum Arithmetic," Next Generation Arithmetic (CoNGA 2024), LNCS 14666, Springer, 2024, pp. 1–51. doi:10.1007/978-3-031-72709-2_1. <span class="file">papers/2404.18603v2.pdf</span><br><span class="small muted">Definição formal. Leia §1, §4.1, §4.2, §4.7 e §5.1 a §5.4; as provas podem ficar para depois.</span></li>
+    <li><b>[3]</b> IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019. <span class="file">papers/IEEE Standard 754-2019.pdf</span><br><span class="small muted">Consulta: §3.4 a §3.6 formatos, §4.3 arredondamento, §7 exceções.</span></li>
+    <li><b>[4]</b> J. L. Gustafson, <i>Every Bit Counts: Posit Computing</i>, CRC Press, 2024. <span class="file">papers/Every Bit Counts Posit Computing 1-9.pdf, …9-13.pdf</span><br><span class="small muted">Cap. 1 formato posit; cap. 2 erro e precisão; §4.7 história do IEEE 754; cap. 6 quire; cap. 8 sistemas logarítmicos; §13.4 "The Hunhold Variation: Takum Format".</span></li>
+    <li><b>[5]</b> Posit Working Group, Standard for Posit™ Arithmetic (2022). <span class="file">papers/posit_standard-2.pdf</span></li>
+  </ol>
+  <h3>Citadas pelos artigos e úteis para o projeto</h3>
+  <ol class="refs" start="6">
+    <li><b>[6]</b> RISC-V International, RISC-V "V" Vector Extension, versão 1.0, 2021. <a href="https://github.com/riscv/riscv-v-spec">github.com/riscv/riscv-v-spec</a> (hoje no RISC-V Unprivileged ISA Manual).</li>
+    <li><b>[7]</b> T. A. Davis e Y. Hu, "The University of Florida Sparse Matrix Collection," ACM TOMS 38(1), 2011. <a href="https://sparse.tamu.edu">sparse.tamu.edu</a></li>
+    <li><b>[8]</b> L. Hunhold e J. Quinlan, MuFoLAB, Multi-Format Linear Algebra Benchmarks, v1.2.0, 2025. doi:10.5281/zenodo.15001855.</li>
+    <li><b>[9]</b> L. Hunhold, "Design and Implementation of a Takum Arithmetic Hardware Codec in VHDL," 2024. arXiv:2408.10594. <span class="small muted">Muito útil para a Fase 1 em hardware.</span></li>
+    <li><b>[10]</b> L. Hunhold e J. Quinlan, "Evaluation of Bfloat16, Posit, and Takum Arithmetics in Sparse Linear Solvers," IEEE ARITH 2025. arXiv:2412.20268.</li>
+    <li><b>[11]</b> J. L. Gustafson e I. Yonemoto, "Beating Floating Point at Its Own Game: Posit Arithmetic," Supercomputing Frontiers and Innovations 4(2), pp. 71–86, 2017.</li>
+    <li><b>[12]</b> P. Micikevicius et al., OCP 8-bit Floating Point Specification (OFP8), Open Compute Project, 2023.</li>
+    <li><b>[13]</b> Intel, Intel® Advanced Vector Extensions 10.2 Architecture Specification, 2024.</li>
+    <li><b>[14]</b> S. Wang e P. Kanwar, "BFloat16: The secret to high performance on Cloud TPUs," Google Cloud Blog, 2019.</li>
+    <li><b>[15]</b> L. Hunhold, J. Quinlan e S. Wesner, "Numerical Performance of the Implicitly Restarted Arnoldi Method in OFP8, Bfloat16, Posit, and Takum Arithmetics," 2025. arXiv:2504.21130.</li>
+    <li><b>[16]</b> F. de Dinechin et al., "Posits: the good, the bad and the ugly," CoNGA 2019 (origem do termo Golden Zone).</li>
+  </ol>
+  <p class="small muted">Ordem de leitura sugerida: este documento, depois [1], [4] §13.4, [2] §4, [6] (configuração, vsetvli e instruções de FP) e [9] quando for implementar.</p>
+</div>
+</section>
+</main>
+</div>
+
+<div id="gpop" role="tooltip" hidden></div>
+
+<script>
+(function(){
+"use strict";
+var $ = function(s,r){return (r||document).querySelector(s)};
+var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+function store(k,v){try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){return null}}
+
+/* ---------- índice + scrollspy + progresso ---------- */
+var chaps = $$("section.chap");
+chaps.forEach(function(sec,i){ var eb = sec.querySelector(".eyebrow"); if(eb) eb.textContent = "Capítulo " + i; });
+var tocHtml = chaps.map(function(s,i){return '<li><a href="#'+s.id+'"><span class="n">'+String(i).padStart(2,"0")+'</span><span>'+s.dataset.title+'</span></a></li>'}).join("");
+$("#toc").innerHTML = tocHtml; $("#toc-m").innerHTML = tocHtml;
+$$("#toc-m a").forEach(function(a){a.addEventListener("click",function(){ $(".toc-mobile").open=false; })});
+var links = $$("#toc a");
+function onScroll(){
+  var h = document.documentElement; var max = h.scrollHeight - h.clientHeight;
+  $("#progress span").style.width = (max>0 ? (h.scrollTop/max*100) : 0) + "%";
+  var cur = 0;
+  chaps.forEach(function(s,i){ if(s.getBoundingClientRect().top < 140) cur = i; });
+  links.forEach(function(a,i){ a.classList.toggle("active", i===cur); });
+}
+window.addEventListener("scroll", onScroll, {passive:true}); onScroll();
+
+/* ---------- glossário ---------- */
+var G = {
+  takum:["Takum","Formato numérico de Hunhold (2024): sinal, direção, regime de 3 bits, característica de até 7 bits e fração. Faixa fixa, precisão afunilada."],
+  nar:["NaR","Not a Real. O único não-número de posits e takums, padrão 100…0. Substitui NaN e ∞."],
+  faixa:["Faixa dinâmica","Intervalo entre o menor e o maior valor positivo representável."],
+  tapered:["Precisão afunilada","Mais bits de fração perto de 1 e menos nas extremidades da faixa (tapered precision)."],
+  ulp:["ULP","Unit in the last place: distância entre dois números representáveis vizinhos."],
+  eps:["Épsilon de máquina","Erro relativo máximo de um arredondamento para o mais próximo, cerca de 2^−(p+1) com p bits de fração."],
+  rne:["RNE","Round to Nearest, ties to Even: arredonda para o mais próximo; no empate, para o de último bit par."],
+  sat:["Saturação","Resultados fora da faixa viram o maior ou o menor valor representável, em vez de ∞ ou 0."],
+  bias:["Bias (viés)","Constante somada ao expoente no IEEE 754 para guardá-lo como inteiro sem sinal. bias = 2^(ne−1) − 1."],
+  subnormal:["Subnormal","Número IEEE com expoente mínimo e sem o 1 implícito; preenche o intervalo perto de zero com precisão decrescente."],
+  csrreg:["CSR (registrador)","Control and Status Register do RISC-V, lido e escrito por csrr/csrw. Ex.: fcsr, vtype, vl."],
+  ofp8:["OFP8","OCP 8-bit Floating Point: os formatos E4M3 e E5M2 do Open Compute Project."],
+  fovea:["Fóvea","Região de valores com o máximo de bits de fração num formato afunilado."],
+  golden:["Zona Dourada","Faixa em que um formato é pelo menos tão preciso quanto o IEEE 754 de mesmo tamanho (termo de F. de Dinechin)."],
+  ghost:["Ghost bits","Bits-fantasma: zeros implícitos à direita de um posit ou takum curto."],
+  quire:["Quire","Acumulador de ponto fixo de 16·n bits do padrão posit que soma produtos sem arredondar."],
+  fma:["FMA","Fused multiply-add: a×b + c com um único arredondamento."],
+  simd:["SIMD","Single Instruction, Multiple Data: uma instrução opera sobre vários elementos em paralelo."],
+  sew:["SEW","Selected Element Width: tamanho de cada elemento vetorial na RVV (8, 16, 32 ou 64 bits)."],
+  lmul:["LMUL","Fator de agrupamento de registradores vetoriais na RVV (1/8 a 8)."],
+  spmv:["SpMV","Sparse matrix-vector multiplication: y = A·x com A esparsa."],
+  lns:["LNS","Logarithmic Number System: guarda-se o logaritmo do número em ponto fixo. Multiplicar vira somar."],
+  gauss:["Logaritmo gaussiano","Φ±(q) = log(1 ± b^−q). Somar ou subtrair num LNS é somar Φ± ao maior logaritmo."]
+};
+var EXTRA = [
+  ["ALU / FPU","Unidade lógico-aritmética / unidade de ponto flutuante."],
+  ["Binade","Intervalo entre duas potências consecutivas da base, como [1, 2) ou [2, 4)."],
+  ["Cotransformação","Técnica de LNS para calcular Φ⁻ perto de q = 0, onde a função vai a −∞."],
+  ["Mantissa (M, m)","No takum logarítmico, a parte fracionária do logaritmo ℓ."],
+  ["Valor logarítmico (ℓ)","No takum log, ℓ = (−1)^S (c + m) e |x| = √e^ℓ."],
+  ["bfloat16","Float de 16 bits com 8 bits de expoente e 7 de fração (os 16 bits de cima do FP32)."],
+  ["Característica (C, c)","No takum, o campo e o valor que dão o expoente."],
+  ["CSR (matriz)","Compressed Sparse Row: formato de matriz esparsa com valores, col_idx e row_ptr."],
+  ["Direção (D)","Bit do takum que indica se a magnitude é ≥ 1 ou < 1."],
+  ["E4M3 / E5M2","Os dois formatos FP8 da OCP, com 4 ou 5 bits de expoente."],
+  ["Float128","IEEE 754 binary128, quádrupla precisão, usado como referência de erro."],
+  ["ISA","Instruction Set Architecture: o contrato entre software e processador."],
+  ["LNS","Logarithmic Number System: o número é guardado pelo seu logaritmo."],
+  ["Logaritmo gaussiano","Φ±(q) = log(1 ± b^−q), necessário para somar num LNS."],
+  ["NaN","Not a Number do IEEE 754; existem muitos padrões de bits diferentes."],
+  ["Posit","Formato afunilado de Gustafson: regime unário + 2 bits de expoente + fração."],
+  ["Regime (R)","Posit: prefixo unário que escala por 16^r. Takum: 3 bits que dizem quantos bits de característica seguem."],
+  ["RVV","RISC-V Vector Extension."],
+  ["T8 / T16 / T32 / T64","Takums de 8, 16, 32 e 64 bits."],
+  ["VLEN / vl","Tamanho do registrador vetorial em bits / número de elementos processados."],
+  ["Zvtakum","Nome da extensão vetorial takum proposta neste projeto."]
+];
+var pop = $("#gpop"), popFor = null;
+function showPop(el){
+  var d = G[el.dataset.g]; if(!d) return;
+  pop.innerHTML = "<b>"+d[0]+"</b>"+d[1]; pop.hidden = false; popFor = el;
+  var r = el.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  var x = Math.min(Math.max(8, r.left + window.scrollX), window.scrollX + document.documentElement.clientWidth - pw - 8);
+  var y = r.top + window.scrollY - ph - 8; if(r.top - ph - 8 < 0) y = r.bottom + window.scrollY + 8;
+  pop.style.left = x+"px"; pop.style.top = y+"px";
+}
+function hidePop(){ pop.hidden = true; popFor = null; }
+$$(".g").forEach(function(el){
+  el.addEventListener("mouseenter",function(){showPop(el)});
+  el.addEventListener("mouseleave",hidePop);
+  el.addEventListener("focus",function(){showPop(el)});
+  el.addEventListener("blur",hidePop);
+  el.addEventListener("click",function(e){ e.stopPropagation(); popFor===el ? hidePop() : showPop(el); });
+});
+document.addEventListener("click",function(){ if(popFor) hidePop(); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") hidePop(); });
+var allTerms = Object.keys(G).map(function(k){return G[k]}).concat(EXTRA).sort(function(a,b){return a[0].localeCompare(b[0],"pt")});
+function renderGloss(f){
+  f = (f||"").toLowerCase();
+  $("#gtable").innerHTML = allTerms.filter(function(t){return !f || (t[0]+" "+t[1]).toLowerCase().indexOf(f)>=0})
+    .map(function(t){return "<tr><td><b>"+t[0]+"</b></td><td>"+t[1]+"</td></tr>"}).join("") || '<tr><td colspan="2" class="muted">Nenhum termo encontrado.</td></tr>';
+}
+renderGloss(); $("#gfilter").addEventListener("input",function(e){renderGloss(e.target.value)});
+
+/* ---------- decodificadores ---------- */
+function pow2(e){ return Math.pow(2,e); }
+// takum linear: bits = string de '0'/'1'
+function takumInfo(bits, log){
+  var n = bits.length, N = Math.max(n,12), s = bits + "0".repeat(N-n);
+  var info = {n:n, N:N, s:s};
+  if(/^0+$/.test(s)){ info.special = "zero"; info.value = 0; return info; }
+  if(/^10+$/.test(s)){ info.special = "NaR"; info.value = NaN; return info; }
+  var S = +s[0], D = +s[1], R = parseInt(s.substr(2,3),2);
+  var r = D ? R : 7 - R;
+  var C = r ? parseInt(s.substr(5,r),2) : 0;
+  var c = D ? (pow2(r) - 1 + C) : (-pow2(r+1) + 1 + C);
+  var p = N - 5 - r, Fs = s.substr(5+r);
+  var f = p ? parseInt(Fs,2)/pow2(p) : 0;
+  var e = S ? -(c+1) : c;
+  info.S=S; info.D=D; info.R=R; info.r=r; info.C=C; info.c=c; info.p=p; info.f=f; info.e=e; info.F=Fs;
+  info.l = (S ? -1 : 1)*(c + f);
+  info.value = log ? (S ? -1 : 1)*Math.exp(info.l/2) : ((1-3*S)+f)*pow2(e);
+  return info;
+}
+function takumVal(bits){ return takumInfo(bits).value; }
+function takumLogVal(bits){ return takumInfo(bits, true).value; }
+// posit padrão 2022, es = 2
+function positVal(bits){
+  var n = bits.length;
+  if(/^0+$/.test(bits)) return 0;
+  if(/^10+$/.test(bits)) return NaN;
+  var s = bits + "0".repeat(8), S = +s[0], R0 = s[1], k = 0, i = 1;
+  while(i < n && s[i] === R0){ k++; i++; }
+  var r = R0 === "1" ? k-1 : -k;
+  i++; // terminador
+  var E = parseInt(s.substr(i,2),2); i += 2;
+  var fb = Math.max(0, n - i), f = fb ? parseInt(s.substr(i,fb),2)/pow2(fb) : 0;
+  var e = (S ? -1 : 1) * (4*r + E + S);
+  return ((1-3*S)+f)*pow2(e);
+}
+// IEEE genérico (sinal-magnitude). kind: "ieee" | "e4m3"
+function ieeeVal(bits, ne, nf, kind){
+  var S = +bits[0], E = parseInt(bits.substr(1,ne),2), F = parseInt(bits.substr(1+ne),2), bias = pow2(ne-1)-1, emax = pow2(ne)-1;
+  var sg = S ? -1 : 1;
+  if(kind === "e4m3"){ if(E===emax && F===pow2(nf)-1) return NaN; }
+  else if(E===emax){ return F ? NaN : sg*Infinity; }
+  if(E===0) return sg*F/pow2(nf)*pow2(1-bias);
+  return sg*(1+F/pow2(nf))*pow2(E-bias);
+}
+function toBits(k,n){ return (k>>>0).toString(2).padStart(n,"0").slice(-n); }
+function twos(bits){ var n = bits.length; var k = (pow2(n) - parseInt(bits,2)) % pow2(n); return toBits(k,n); }
+function signedInt(bits){ var u = parseInt(bits,2), n = bits.length; return bits[0]==="1" ? u - pow2(n) : u; }
+
+/* ---------- formatação ---------- */
+var SUP = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻"};
+function sup(x){ return String(x).split("").map(function(ch){return SUP[ch]||ch}).join(""); }
+function fmt(v, digits){
+  digits = digits || 6;
+  if(v===0) return "0";
+  if(Number.isNaN(v)) return "NaR";
+  if(!isFinite(v)) return v>0 ? "+∞" : "−∞";
+  var a = Math.abs(v), sgn = v<0 ? "−" : "";
+  if(a >= 1e-3 && a < 1e7){
+    var t = a.toPrecision(digits); if(t.indexOf("e")<0 && t.indexOf(".")>=0) t = t.replace(/0+$/,"").replace(/\.$/,"");
+    return sgn + t.replace(".",",");
+  }
+  var ex = a.toExponential(digits-1).split("e");
+  var m = ex[0].replace(/0+$/,"").replace(/\.$/,"").replace(".",",");
+  return sgn + m + "×10" + sup(+ex[1]);
+}
+function fracStr(f,p){ if(!p || f===0) return "0"; var num = Math.round(f*pow2(p)); var g = num, d = pow2(p); while(g%2===0 && d>1){ g/=2; d/=2; } return g+"/"+d; }
+
+/* ---------- Laboratório 2: decodificador ---------- */
+var dec = { n:8, bits:"01000000", log:false };
+var EX = {
+  one:function(n){return "01"+"0".repeat(n-2)}, onep:function(n){return "01000"+"0".repeat(n-6)+"1"}, two:function(n){return "01001"+"0".repeat(n-5)},
+  big:function(n){return "01100"+"0".repeat(n-5)}, half:function(n){return "00111"+"1".repeat(n-5)}, max:function(n){return "0"+"1".repeat(n-1)},
+  min:function(n){return "0".repeat(n-1)+"1"}, neg:function(n){return "11"+"0".repeat(n-2)}, zero:function(n){return "0".repeat(n)}, nar:function(n){return "1"+"0".repeat(n-1)}
+};
+function fieldOf(i, I){
+  if(I.special) return i===0 ? "S" : "F";
+  if(i===0) return "S"; if(i===1) return "D"; if(i<5) return "R"; if(i<5+I.r) return "C"; return "F";
+}
+function renderDec(){
+  var I = takumInfo(dec.bits, dec.log), html = "", idx = "";
+  for(var i=0;i<I.N;i++){
+    var ghost = i >= dec.n, cls = "bit " + fieldOf(i,I) + (ghost ? " ghost" : "");
+    if(dec.n >= 16 && i>0 && i%8===0 && !ghost) { html += '<span class="gap"></span>'; idx += '<span style="width:8px"></span>'; }
+    if(ghost && i===dec.n) { html += '<span class="gap"></span>'; idx += '<span style="width:8px"></span>'; }
+    html += ghost ? '<span class="'+cls+'" title="ghost bit (zero implícito)">0</span>'
+                  : '<button type="button" class="'+cls+'" data-i="'+i+'" aria-label="bit '+(dec.n-1-i)+' = '+I.s[i]+'">'+I.s[i]+'</button>';
+    idx += '<span>'+(ghost ? "·" : (dec.n-1-i))+'</span>';
+  }
+  $("#dec-bits").innerHTML = html; $("#dec-idx").innerHTML = idx;
+  var st;
+  if(I.special === "zero") st = '<span class="k">Todos os bits são 0:</span> caso especial <b>zero</b>.';
+  else if(I.special === "NaR") st = '<span class="k">1 seguido de zeros:</span> caso especial <b>NaR</b> (o menor inteiro com sinal).';
+  else {
+    st  = '<span class="cS">S = '+I.S+'</span>   <span class="cD">D = '+I.D+'</span>   <span class="cR">R = '+I.s.substr(2,3)+' = '+I.R+'</span><br>';
+    st += '<span class="k">r = </span>'+(I.D ? 'R' : '7 − R')+' = <b>'+I.r+'</b> bits de característica<br>';
+    st += '<span class="cC">C = '+(I.r ? I.s.substr(5,I.r)+' = '+I.C : '(vazio) = 0')+'</span><br>';
+    st += '<span class="k">c = </span>'+(I.D ? '2^'+I.r+' − 1 + '+I.C : '−2^'+(I.r+1)+' + 1 + '+I.C)+' = <b>'+I.c+'</b><br>';
+    st += '<span class="k">p = </span>'+I.N+' − 5 − '+I.r+' = <b>'+I.p+'</b> bits de fração'+(dec.n<12 ? ' <span class="k">(com ghost bits)</span>' : '')+'<br>';
+    if(dec.log){
+      st += '<span class="cF">m = '+(I.p ? I.F.replace(/(.{8})/g,"$1 ").trim() : '—')+'</span> = '+fracStr(I.f,I.p)+'<br>';
+      st += '<span class="k">ℓ = </span>'+(I.S ? '−(c + m)' : 'c + m')+' = <b>'+(+I.l.toFixed(6))+'</b><br>';
+      st += '<span class="k">valor = </span>'+(I.S ? '−' : '')+'√e^'+(+I.l.toFixed(6))+' = '+(I.S ? '−' : '')+'e^('+(+(I.l/2).toFixed(6))+')';
+    } else {
+      st += '<span class="cF">f = '+(I.p ? I.F.replace(/(.{8})/g,"$1 ").trim() : '—')+'</span> = '+fracStr(I.f,I.p)+'<br>';
+      st += '<span class="k">e = </span>'+(I.S ? '−(c + 1)' : 'c')+' = <b>'+I.e+'</b><br>';
+      st += '<span class="k">valor = </span>['+(I.S ? '−2' : '1')+' + '+fracStr(I.f,I.p)+'] × 2^'+I.e;
+    }
+  }
+  $("#dec-steps").innerHTML = st;
+  $("#dec-val").textContent = fmt(I.value, 8);
+  var pv = positVal(dec.bits), other = takumInfo(dec.bits, !dec.log).value;
+  $("#dec-cmp").innerHTML =
+    '<div><span>Mesmos bits como takum '+(dec.log ? 'linear' : 'logarítmico')+'</span><span>'+fmt(other,8)+'</span></div>'+
+    '<div><span>Mesmos bits como posit'+dec.n+'</span><span>'+fmt(pv,8)+'</span></div>'+
+    '<div><span>Como inteiro com sinal</span><span>'+signedInt(dec.bits)+'</span></div>'+
+    '<div><span>Hexadecimal</span><span>0x'+parseInt(dec.bits,2).toString(16).toUpperCase().padStart(dec.n/4,"0")+'</span></div>';
+}
+$("#dec-bits").addEventListener("click",function(e){
+  var b = e.target.closest("button[data-i]"); if(!b) return;
+  var i = +b.dataset.i, a = dec.bits.split(""); a[i] = a[i]==="1" ? "0" : "1"; dec.bits = a.join(""); renderDec();
+  var nb = $('#dec-bits button[data-i="'+i+'"]'); if(nb) nb.focus();
+});
+$$("[data-dn]").forEach(function(btn){ btn.addEventListener("click",function(){
+  var n = +btn.dataset.dn; $$("[data-dn]").forEach(function(x){x.setAttribute("aria-pressed", x===btn ? "true":"false")});
+  dec.bits = n > dec.n ? dec.bits + "0".repeat(n-dec.n) : dec.bits.slice(0,n); // estender = ghost bits viram explícitos
+  dec.n = n; renderDec();
+});});
+$("#dec-ex").addEventListener("change",function(e){ if(EX[e.target.value]){ dec.bits = EX[e.target.value](dec.n); renderDec(); } });
+$("#dec-neg").addEventListener("click",function(){ dec.bits = twos(dec.bits); renderDec(); });
+$("#dec-up").addEventListener("click",function(){ dec.bits = toBits((parseInt(dec.bits,2)+1)%pow2(dec.n), dec.n); renderDec(); });
+$("#dec-dn").addEventListener("click",function(){ dec.bits = toBits((parseInt(dec.bits,2)-1+pow2(dec.n))%pow2(dec.n), dec.n); renderDec(); });
+$$("[data-dm]").forEach(function(btn){ btn.addEventListener("click",function(){
+  $$("[data-dm]").forEach(function(x){x.setAttribute("aria-pressed", x===btn ? "true":"false")});
+  dec.log = btn.dataset.dm === "log"; $("#dec-inv").hidden = !dec.log; renderDec();
+});});
+$("#dec-inv").addEventListener("click",function(){ // 1/x: complemento de 2 de tudo menos o sinal
+  var rest = dec.bits.slice(1); if(/^0+$/.test(rest)) return; dec.bits = dec.bits[0] + twos(rest); renderDec();
+});
+renderDec();
+
+/* ---------- Laboratório 3: conversor ---------- */
+// busca binária nos padrões positivos (monótonos para todos estes formatos)
+function nearest(x, n, valFn, hiK, geo){
+  var lo = 1, hi = hiK, vmin = valFn(toBits(1,n)), vmax = valFn(toBits(hiK,n));
+  if(x <= vmin) return {v:vmin, k:1, lowSide:true};
+  if(x >= vmax) return {v:vmax, k:hiK, highSide:true};
+  while(hi - lo > 1){ var mid = Math.floor((lo+hi)/2); if(valFn(toBits(mid,n)) <= x) lo = mid; else hi = mid; }
+  var a = valFn(toBits(lo,n)), b = valFn(toBits(hi,n));
+  var takeA = geo ? (x <= Math.sqrt(a*b)) : (x - a <= b - x);
+  return takeA ? {v:a,k:lo} : {v:b,k:hi};
+}
+function roundTapered(x, n, fn, geo){ // posit/takum: satura; geo = ponto médio geométrico (log)
+  var r = nearest(x, n, fn, pow2(n-1)-1, geo);
+  return {v:r.v, bits:toBits(r.k,n), note: r.highSide && x>r.v ? "saturou no maior" : (r.lowSide && x<r.v ? "saturou no menor" : "")};
+}
+function roundIEEE(x, ne, nf, kind){
+  var n = 1+ne+nf, fn = function(b){ return ieeeVal(b,ne,nf,kind); };
+  var hiK = kind==="e4m3" ? pow2(n-1)-2 : (pow2(ne)-1)*pow2(nf) - 1;      // maior finito
+  var minSub = fn(toBits(1,n)), maxF = fn(toBits(hiK,n));
+  var ulpTop = maxF - fn(toBits(hiK-1,n));
+  if(x >= maxF + ulpTop/2) return kind==="e4m3" ? {v:NaN, note:"overflow → NaN"} : {v:Infinity, note:"overflow → ∞"};
+  if(x < minSub/2) return {v:0, note:"underflow → 0"};
+  var r = nearest(x, n, fn, hiK);
+  return {v:r.v, bits:toBits(r.k,n), note: r.v < pow2(2-pow2(ne-1)) && r.v>0 ? "subnormal" : ""};
+}
+var FORMATS = [
+  {g:"8 bits",  name:"OFP8 E4M3", f:function(x){return roundIEEE(x,4,3,"e4m3")}},
+  {g:"8 bits",  name:"OFP8 E5M2", f:function(x){return roundIEEE(x,5,2,"ieee")}},
+  {g:"8 bits",  name:"posit8",    f:function(x){return roundTapered(x,8,positVal)}},
+  {g:"8 bits",  name:"takum8 linear", f:function(x){return roundTapered(x,8,takumVal)}, tk:true},
+  {g:"8 bits", name:"takum8 log", f:function(x){return roundTapered(x,8,takumLogVal,true)}, tk:true},
+  {g:"16 bits", name:"FP16",      f:function(x){return roundIEEE(x,5,10,"ieee")}},
+  {g:"16 bits", name:"bfloat16",  f:function(x){return roundIEEE(x,8,7,"ieee")}},
+  {g:"16 bits", name:"posit16",   f:function(x){return roundTapered(x,16,positVal)}},
+  {g:"16 bits", name:"takum16 linear", f:function(x){return roundTapered(x,16,takumVal)}, tk:true},
+  {g:"16 bits", name:"takum16 log", f:function(x){return roundTapered(x,16,takumLogVal,true)}, tk:true},
+  {g:"32 bits", name:"FP32",      f:function(x){ var v = Math.fround(x); return {v:v, note: !isFinite(v) ? "overflow → ∞" : (v===0 ? "underflow → 0" : (v<1.1754943508222875e-38 ? "subnormal" : ""))}; }},
+  {g:"32 bits", name:"posit32",   f:function(x){return roundTapered(x,32,positVal)}},
+  {g:"32 bits", name:"takum32 linear", f:function(x){return roundTapered(x,32,takumVal)}, tk:true},
+  {g:"32 bits", name:"takum32 log", f:function(x){return roundTapered(x,32,takumLogVal,true)}, tk:true}
+];
+function parseNum(s){ s = String(s).trim().replace(/\s/g,"").replace("×10^","e").replace(/,/g,"."); if(!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s)) return NaN; return parseFloat(s); }
+function renderConv(){
+  var raw = $("#conv-in").value, x = parseNum(raw), body = $("#conv-body"), msg = $("#conv-msg");
+  if(!isFinite(x) || x === 0){ msg.textContent = "Digite um número real diferente de zero, por exemplo 0.1, 6.02e23 ou -3,5."; body.innerHTML = ""; return; }
+  msg.textContent = "Valor exato: " + fmt(x, 10);
+  var ax = Math.abs(x), sg = x<0 ? -1 : 1, rows = "", lastG = "";
+  FORMATS.forEach(function(F){
+    var r = F.f(ax), v = r.v * sg;
+    var err = (isFinite(r.v) && !Number.isNaN(r.v)) ? Math.abs(r.v-ax)/ax : Infinity;
+    var errTxt, bar = 0;
+    if(!isFinite(err)) errTxt = '<span class="badge bad">sem representação</span>';
+    else if(err === 0) errTxt = '<span class="badge ok">exato</span>';
+    else { errTxt = fmt(err,2).replace(/^(.*)$/, "$1"); if(err < 1) bar = Math.max(4, Math.min(120, (Math.log10(err)+12)/12*120)); else errTxt = '<span class="badge bad">'+fmt(err*100,3)+'%</span>'; }
+    if(F.g !== lastG){ rows += '<tr><th colspan="3">'+F.g+'</th></tr>'; lastG = F.g; }
+    rows += '<tr><td>'+(F.tk ? '<b>'+F.name+'</b>' : F.name)+(r.note ? ' <span class="small muted">· '+r.note+'</span>' : '')+'</td><td class="num">'+fmt(v,8)+'</td><td>'+(bar ? '<span class="err" style="width:'+bar+'px"></span>' : '')+errTxt+'</td></tr>';
+  });
+  body.innerHTML = rows;
+}
+$("#conv-in").addEventListener("input", renderConv);
+$$("#conv-presets button").forEach(function(b){ b.addEventListener("click",function(){ $("#conv-in").value = b.dataset.v; renderConv(); }); });
+renderConv();
+
+/* ---------- Laboratório 1: gráfico ---------- */
+function takumP(n,e){ var r = e>=0 ? Math.floor(Math.log2(e+1)) : Math.floor(Math.log2(-e)); return Math.max(0, n-5-r); }
+function takumDom(n){ return n>=12 ? [-255,254] : [-239,238]; }
+function positP(n,e){ var r = Math.floor(e/4), len = r>=0 ? r+2 : -r+1; return Math.max(0, n-1-len-2); }
+function ieeeP(nf, emin, emax){ return function(n,e){ if(e>emax) return null; if(e>=emin) return nf; var k = emin-e; return nf-k >= 0 ? nf-k : null; }; }
+var SERIES = {
+  8:  [{name:"takum8",p:takumP,dom:takumDom(8),col:"--s1"},{name:"posit8",p:positP,dom:[-24,23],col:"--s2"},{name:"E4M3",p:ieeeP(3,-6,8),dom:[-9,8],col:"--s3"},{name:"E5M2",p:ieeeP(2,-14,15),dom:[-16,15],col:"--s4"}],
+  16: [{name:"takum16",p:takumP,dom:takumDom(16),col:"--s1"},{name:"posit16",p:positP,dom:[-56,55],col:"--s2"},{name:"FP16",p:ieeeP(10,-14,15),dom:[-24,15],col:"--s3"},{name:"bfloat16",p:ieeeP(7,-126,127),dom:[-133,127],col:"--s4"}],
+  32: [{name:"takum32",p:takumP,dom:takumDom(32),col:"--s1"},{name:"posit32",p:positP,dom:[-120,119],col:"--s2"},{name:"FP32",p:ieeeP(23,-126,127),dom:[-149,127],col:"--s3"}]
+};
+var chartN = 16;
+var W=900,H=320,M={l:44,r:16,t:14,b:38}, XMIN=-260, XMAX=260;
+function sx(e){ return M.l + (e-XMIN)/(XMAX-XMIN)*(W-M.l-M.r); }
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function drawChart(){
+  var ser = SERIES[chartN], ymax = chartN===8 ? 4 : chartN===16 ? 12 : 28, ystep = chartN===8 ? 1 : chartN===16 ? 2 : 4;
+  var sy = function(p){ return H-M.b - p/ymax*(H-M.t-M.b); };
+  var g = '<g class="grid">';
+  for(var y=0;y<=ymax;y+=ystep) g += '<line x1="'+M.l+'" x2="'+(W-M.r)+'" y1="'+sy(y)+'" y2="'+sy(y)+'"/>';
+  g += '</g><g class="axis">';
+  for(y=0;y<=ymax;y+=ystep) g += '<text x="'+(M.l-8)+'" y="'+(sy(y)+4)+'" text-anchor="end">'+y+'</text>';
+  [-250,-200,-150,-100,-50,0,50,100,150,200,250].forEach(function(e){ g += '<text x="'+sx(e)+'" y="'+(H-M.b+18)+'" text-anchor="middle">'+(e===0?'2⁰ = 1':'2'+sup(e))+'</text>'; });
+  g += '<text x="'+M.l+'" y="'+(M.t-2)+'" class="lbl"></text></g>';
+  g += '<line class="base" x1="'+M.l+'" x2="'+(W-M.r)+'" y1="'+sy(0)+'" y2="'+sy(0)+'"/>';
+  var paths = ser.map(function(s){
+    var d = "", started = false;
+    for(var e=s.dom[0]; e<=s.dom[1]; e++){
+      var p = s.p(chartN,e); if(p===null || p===undefined){ started=false; continue; }
+      var x0 = sx(e), x1 = sx(e+1), yy = sy(p);
+      d += (started ? "L" : "M") + x0.toFixed(1)+","+yy.toFixed(1) + "L"+x1.toFixed(1)+","+yy.toFixed(1);
+      started = true;
+    }
+    return '<path d="'+d+'" fill="none" stroke="var('+s.col+')" stroke-width="2" stroke-linejoin="round"/>';
+  }).join("");
+  var hover = '<line id="xh" x1="0" x2="0" y1="'+M.t+'" y2="'+(H-M.b)+'" stroke="var(--faint)" stroke-dasharray="3 3" visibility="hidden"/><rect id="hit" x="'+M.l+'" y="'+M.t+'" width="'+(W-M.l-M.r)+'" height="'+(H-M.t-M.b)+'" fill="transparent"/>';
+  var svg = $("#chart");
+  svg.innerHTML = g + paths + '<text x="12" y="'+(M.t+ (H-M.t-M.b)/2)+'" transform="rotate(-90 12 '+(M.t+(H-M.t-M.b)/2)+')" text-anchor="middle" class="lbl">bits de fração</text>' + hover;
+  $("#chart-legend").innerHTML = ser.map(function(s){ return '<span><i style="background:var('+s.col+')"></i>'+s.name+'</span>'; }).join("");
+  var tip = $("#chart-tip"), wrap = $("#chart-wrap");
+  function move(ev){
+    var pt = svg.createSVGPoint(); var src = ev.touches ? ev.touches[0] : ev; pt.x = src.clientX; pt.y = src.clientY;
+    var loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    var e = Math.round(XMIN + (loc.x - M.l)/(W-M.l-M.r)*(XMAX-XMIN)); e = Math.max(XMIN, Math.min(XMAX, e));
+    var xh = $("#xh"); xh.setAttribute("x1", sx(e+0.5)); xh.setAttribute("x2", sx(e+0.5)); xh.setAttribute("visibility","visible");
+    var html = '<b>|x| ≈ 2'+sup(e)+'</b> <span class="muted">≈ '+fmt(pow2(e),2)+'</span><br>';
+    ser.forEach(function(s){ var p = (e>=s.dom[0] && e<=s.dom[1]) ? s.p(chartN,e) : null; html += '<span class="sw" style="background:var('+s.col+')"></span>'+s.name+': '+(p===null||p===undefined ? '<span class="muted">fora da faixa</span>' : '<b>'+p+'</b> bits')+'<br>'; });
+    tip.innerHTML = html; tip.hidden = false;
+    var wr = wrap.getBoundingClientRect(), tx = src.clientX - wr.left + wrap.scrollLeft + 14;
+    if(tx + tip.offsetWidth > wrap.scrollWidth - 4) tx = src.clientX - wr.left + wrap.scrollLeft - tip.offsetWidth - 14;
+    tip.style.left = tx + "px"; tip.style.top = Math.max(0, src.clientY - wr.top - 20) + "px";
+  }
+  var hit = $("#hit");
+  hit.addEventListener("mousemove", move); hit.addEventListener("touchmove", function(e){ move(e); e.preventDefault(); }, {passive:false});
+  hit.addEventListener("touchstart", move, {passive:true});
+  hit.addEventListener("mouseleave", function(){ tip.hidden = true; $("#xh").setAttribute("visibility","hidden"); });
+}
+$$("[data-n]").forEach(function(btn){ btn.addEventListener("click",function(){
+  chartN = +btn.dataset.n; $$("[data-n]").forEach(function(x){ x.setAttribute("aria-pressed", x===btn ? "true" : "false"); }); drawChart();
+});});
+drawChart();
+
+/* ---------- Laboratório 4: CSR ---------- */
+var A = [[5,0,0,1],[0,2,0,0],[0,0,3,0],[4,0,0,0]], X = [1,2,3,4];
+var val=[], col=[], ptr=[0];
+A.forEach(function(row){ row.forEach(function(v,j){ if(v){ val.push(v); col.push(j); } }); ptr.push(val.length); });
+$("#csr-mat").innerHTML = A.map(function(row,i){ return row.map(function(v,j){ return '<span class="'+(v?'nz':'')+'" data-r="'+i+'" data-c="'+j+'" '+(v?'tabindex="0"':'')+'>'+v+'</span>'; }).join(""); }).join("");
+function arr(id, a){ $(id).insertAdjacentHTML("beforeend", a.map(function(v,i){ return '<span data-i="'+i+'">'+v+'</span>'; }).join("")); }
+arr("#arr-val", val); arr("#arr-col", col); arr("#arr-ptr", ptr); arr("#arr-x", X);
+function hl(row){
+  $$("#lab-csr .on").forEach(function(e){ e.classList.remove("on"); });
+  if(row === null) return;
+  var a = ptr[row], b = ptr[row+1], terms = [], sum = 0;
+  $$('#csr-mat span[data-r="'+row+'"].nz').forEach(function(e){ e.classList.add("on"); });
+  $('#arr-ptr span[data-i="'+row+'"]').classList.add("on"); $('#arr-ptr span[data-i="'+(row+1)+'"]').classList.add("on");
+  for(var k=a;k<b;k++){
+    $('#arr-val span[data-i="'+k+'"]').classList.add("on"); $('#arr-col span[data-i="'+k+'"]').classList.add("on"); $('#arr-x span[data-i="'+col[k]+'"]').classList.add("on");
+    terms.push(val[k]+"×x["+col[k]+"]"); sum += val[k]*X[col[k]];
+  }
+  $("#csr-sum").innerHTML = "y["+row+"] = " + terms.join(" + ") + " = <b>" + sum + "</b>   <span class='k'>(k de "+a+" até "+(b-1)+")</span>";
+}
+$$("#csr-mat span.nz").forEach(function(c){
+  var r = +c.dataset.r;
+  c.addEventListener("mouseenter", function(){ hl(r); }); c.addEventListener("focus", function(){ hl(r); }); c.addEventListener("click", function(){ hl(r); });
+});
+hl(0);
+
+/* ---------- binade linear × log ---------- */
+(function(){
+  var W=900, L=60, R=20, y1=52, y2=112, lo=0, hi=Math.log(4);
+  var X = function(v){ return L + (Math.log(v)-lo)/(hi-lo)*(W-L-R); };
+  var g = '<g class="axis">';
+  [1,1.5,2,3,4].forEach(function(v){ g += '<line x1="'+X(v)+'" x2="'+X(v)+'" y1="28" y2="128" stroke="var(--line)"/><text x="'+X(v)+'" y="145" text-anchor="middle">'+String(v).replace(".",",")+'</text>'; });
+  g += '<text x="0" y="'+(y1+4)+'">linear</text><text x="0" y="'+(y2+4)+'">log</text><text x="'+(W-R)+'" y="18" text-anchor="end">eixo em escala logarítmica</text></g>';
+  var t = '';
+  for(var e=0;e<2;e++) for(var k=0;k<8;k++){ var v=(1+k/8)*pow2(e); t += '<line x1="'+X(v)+'" x2="'+X(v)+'" y1="'+(y1-12)+'" y2="'+(y1+12)+'" stroke="var(--s1)" stroke-width="2"/>'; }
+  for(var j=0; Math.exp(j/16) <= 4.0001; j++){ var w=Math.exp(j/16); t += '<line x1="'+X(w)+'" x2="'+X(w)+'" y1="'+(y2-12)+'" y2="'+(y2+12)+'" stroke="var(--s2)" stroke-width="2"/>'; }
+  $("#binade").innerHTML = g + t;
+})();
+
+/* ---------- calculadora LNS ---------- */
+var lns = { op:"+", n:16 };
+function phiExact(q, plus){ return plus ? 2*Math.log(1+Math.exp(-q/2)) : 2*Math.log(1-Math.exp(-q/2)); }
+function phiLUT(q, plus, h, qmax){
+  if(!h) return {v:phiExact(q,plus), note:""};
+  if(q >= qmax) return {v:0, note:"q ≥ "+qmax.toFixed(1)+": fora da tabela, Φ ≈ 0 (o menor não altera o maior)"};
+  if(!plus && q < h) return {v:phiExact(h,false), note:"q < passo: a tabela não tem ponto em q = 0 (lá Φ⁻ = −∞); usa Φ⁻("+h+")"};
+  var k = Math.floor(q/h), a = phiExact(k*h,plus), b = phiExact((k+1)*h,plus), t = (q-k*h)/h;
+  return {v:a + (b-a)*t, note:"interpola entre q = "+(+(k*h).toFixed(4))+" e "+(+((k+1)*h).toFixed(4))};
+}
+function rLog(x,n){ if(x===0) return 0; var r = roundTapered(Math.abs(x), n, takumLogVal, true); return (x<0?-1:1)*r.v; }
+function rLin(x,n){ if(x===0) return 0; var r = roundTapered(Math.abs(x), n, takumVal); return (x<0?-1:1)*r.v; }
+function bitsLog(x,n){ if(x===0) return "0".repeat(n); var b = roundTapered(Math.abs(x), n, takumLogVal, true).bits; return x<0 ? twos(b) : b; }
+function relErr(a,b){ return b===0 ? (a===0?0:Infinity) : Math.abs(a-b)/Math.abs(b); }
+function renderLNS(){
+  var x = parseNum($("#lns-x").value), y = parseNum($("#lns-y").value), n = lns.n, h = +$("#lns-h").value;
+  var out = $("#lns-steps");
+  if(!isFinite(x) || !isFinite(y) || x===0 || y===0){ out.innerHTML = "Digite x e y reais diferentes de zero."; $("#lns-val").textContent="—"; $("#lns-cmp").innerHTML=""; return; }
+  var X = rLog(x,n), Y = rLog(y,n), lx = 2*Math.log(Math.abs(X)), ly = 2*Math.log(Math.abs(Y)), sx = X<0?-1:1, sy = Y<0?-1:1;
+  var f6 = function(v){ return (+v.toFixed(6)).toString().replace(".",","); };
+  var st = '<span class="k">x → takum'+n+' log:</span> '+bitsLog(x,n)+'  ℓx = '+f6(lx)+'<br><span class="k">y → takum'+n+' log:</span> '+bitsLog(y,n)+'  ℓy = '+f6(ly)+'<br>';
+  var exact, R, lres, sres;
+  if(lns.op==="*" || lns.op==="/"){
+    exact = lns.op==="*" ? x*y : x/y;
+    lres = lns.op==="*" ? lx+ly : lx-ly; sres = sx*sy;
+    st += '<span class="k">ℓ = ℓx '+(lns.op==="*"?'+':'−')+' ℓy = </span><b>'+f6(lres)+'</b>  <span class="k">(soma de ponto fixo, sem tabela)</span><br>';
+    st += '<span class="k">sinal = </span>'+(sres<0?'−':'+');
+  } else {
+    var ys = lns.op==="-" ? -sy : sy; exact = lns.op==="+" ? x+y : x-y;
+    var plus = sx===ys, big = lx>=ly ? lx : ly, q = Math.abs(lx-ly);
+    sres = lx>=ly ? sx : ys;
+    st += '<span class="k">operação efetiva: </span>'+(plus ? 'sinais iguais → Φ⁺' : 'sinais opostos → Φ⁻')+'<br>';
+    st += '<span class="k">q = |ℓx − ℓy| = </span>'+f6(q)+'<br>';
+    if(!plus && q===0){ lres = -Infinity; st += 'q = 0 com sinais opostos: resultado exatamente 0'; }
+    else {
+      var pmax = n-5, qmax = 2*Math.log(pow2(pmax+3)), ph = phiLUT(q, plus, h, qmax), pe = phiExact(q, plus);
+      var entries = h ? Math.ceil(qmax/h)+1 : 0;
+      st += '<span class="k">Φ'+(plus?'⁺':'⁻')+'(q) exato = </span>'+f6(pe)+'<br>';
+      if(h) st += '<span class="k">Φ pela tabela = </span><b>'+f6(ph.v)+'</b> <span class="k">('+ph.note+'; '+entries+' entradas por função)</span><br>';
+      lres = big + ph.v;
+      st += '<span class="k">ℓ = max(ℓx, ℓy) + Φ = </span><b>'+f6(lres)+'</b>';
+    }
+  }
+  R = isFinite(lres) ? rLog(sres*Math.exp(lres/2), n) : 0;
+  out.innerHTML = st;
+  $("#lns-val").textContent = fmt(R, 8);
+  var lin = lns.op==="+" ? rLin(rLin(x,n)+rLin(y,n),n) : lns.op==="-" ? rLin(rLin(x,n)-rLin(y,n),n) : lns.op==="*" ? rLin(rLin(x,n)*rLin(y,n),n) : rLin(rLin(x,n)/rLin(y,n),n);
+  var e1 = relErr(R,exact), e2 = relErr(lin,exact);
+  $("#lns-cmp").innerHTML =
+    '<div><span>Resultado exato</span><span>'+fmt(exact,10)+'</span></div>'+
+    '<div><span>Erro relativo (takum log)</span><span>'+(e1===0?'exato':fmt(e1,3))+'</span></div>'+
+    '<div><span>Mesma conta em takum'+n+' linear</span><span>'+fmt(lin,8)+'</span></div>'+
+    '<div><span>Erro relativo (takum linear)</span><span>'+(e2===0?'exato':fmt(e2,3))+'</span></div>';
+}
+["#lns-x","#lns-y"].forEach(function(id){ $(id).addEventListener("input", renderLNS); });
+$("#lns-h").addEventListener("change", renderLNS);
+$$("[data-op]").forEach(function(b){ b.addEventListener("click",function(){ lns.op=b.dataset.op; $$("[data-op]").forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")}); renderLNS(); }); });
+$$("[data-ln]").forEach(function(b){ b.addEventListener("click",function(){ lns.n=+b.dataset.ln; $$("[data-ln]").forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")}); renderLNS(); }); });
+renderLNS();
+
+/* ---------- experimento: produtos escalares ---------- */
+var TABLES = {};
+function table(id){
+  if(TABLES[id]) return TABLES[id];
+  var d = {tl8:[8,"tl"],tg8:[8,"tg"],tl16:[16,"tl"],tg16:[16,"tg"],e4m3:[8,"e4m3"],e5m2:[8,"e5m2"],fp16:[16,"fp16"],bf16:[16,"bf16"]}[id];
+  var n = d[0], kind = d[1], vals = [];
+  if(kind==="tl"||kind==="tg"){ for(var k=1;k<pow2(n-1);k++) vals.push(takumInfo(toBits(k,n), kind==="tg").value); }
+  else {
+    var P = {e4m3:[4,3,"e4m3"],e5m2:[5,2,"ieee"],fp16:[5,10,"ieee"],bf16:[8,7,"ieee"]}[kind];
+    var hiK = P[2]==="e4m3" ? pow2(n-1)-2 : (pow2(P[0])-1)*pow2(P[1])-1;
+    for(k=1;k<=hiK;k++) vals.push(ieeeVal(toBits(k,n),P[0],P[1],P[2]));
+  }
+  var arr = Float64Array.from(vals);
+  return TABLES[id] = {a:arr, tapered: kind==="tl"||kind==="tg", geo: kind==="tg", nanOver: kind==="e4m3"};
+}
+function rnd(x, T){
+  if(x===0 || Number.isNaN(x)) return x;
+  if(!isFinite(x)) return T.tapered ? (x>0?1:-1)*T.a[T.a.length-1] : (T.nanOver ? NaN : x);
+  var s = x<0?-1:1, v = Math.abs(x), a = T.a, last = a.length-1;
+  if(T.tapered){ if(v<=a[0]) return s*a[0]; if(v>=a[last]) return s*a[last]; }
+  else {
+    if(v >= a[last] + (a[last]-a[last-1])/2) return T.nanOver ? NaN : s*Infinity;
+    if(v < a[0]/2) return 0;
+    if(v <= a[0]) return s*a[0];
+    if(v >= a[last]) return s*a[last];
+  }
+  var lo=0, hi=last;
+  while(hi-lo>1){ var m=(lo+hi)>>1; if(a[m]<=v) lo=m; else hi=m; }
+  var A=a[lo], B=a[hi], takeA = T.geo ? v <= Math.sqrt(A*B) : (v-A <= B-v);
+  return s*(takeA?A:B);
+}
+function lnsAddLUT(u, w){ // soma de dois valores já representáveis, Φ por tabela (passo 1/16, T16)
+  if(u===0) return w; if(w===0) return u;
+  var lu = 2*Math.log(Math.abs(u)), lw = 2*Math.log(Math.abs(w)), su = u<0?-1:1, sw = w<0?-1:1;
+  var plus = su===sw, big = Math.max(lu,lw), q = Math.abs(lu-lw), sg = lu>=lw ? su : sw;
+  if(!plus && q===0) return 0;
+  var ph = phiLUT(q, plus, 1/16, 2*Math.log(pow2(14))).v;
+  return sg*Math.exp((big+ph)/2);
+}
+var exp = { n:16, seed:1 };
+var EXPSER = {
+  8: [{id:"tl8",name:"takum8 linear",col:"--s1"},{id:"tg8",name:"takum8 log",col:"--s2"},{id:"e4m3",name:"OFP8 E4M3",col:"--s3"},{id:"e5m2",name:"OFP8 E5M2",col:"--s4"}],
+  16:[{id:"tl16",name:"takum16 linear",col:"--s1"},{id:"tg16",name:"takum16 log",col:"--s2"},{id:"fp16",name:"FP16",col:"--s3"},{id:"bf16",name:"bfloat16",col:"--s4"}]
+};
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function runExp(){
+  var L = +$("#exp-L").value, A = +$("#exp-a").value, mixed = $("#exp-mixed").checked, lut = $("#exp-lut").checked, K = 300;
+  var rng = mulberry(exp.seed), cases = [];
+  for(var t=0;t<K;t++){
+    var a=[], b=[], ref=0;
+    for(var i=0;i<L;i++){
+      var ai = Math.pow(10, (2*rng()-1)*A) * (mixed && rng()<0.5 ? -1 : 1), bi = Math.pow(10, (2*rng()-1)*A);
+      a.push(ai); b.push(bi); ref += ai*bi;
+    }
+    cases.push({a:a,b:b,ref:ref});
+  }
+  var ser = EXPSER[exp.n], res = ser.map(function(S){
+    var T = table(S.id), useLut = lut && exp.n===16 && S.id.indexOf("tg")===0, errs = [];
+    cases.forEach(function(c){
+      var s = 0;
+      for(var i=0;i<c.a.length;i++){
+        var p = rnd(rnd(c.a[i],T)*rnd(c.b[i],T), T);
+        s = rnd(useLut ? lnsAddLUT(s,p) : s+p, T);
+      }
+      var e = (isFinite(s) && !Number.isNaN(s)) ? Math.abs(s-c.ref)/Math.abs(c.ref) : Infinity;
+      errs.push(e);
+    });
+    errs.sort(function(x,y){return x-y});
+    return {S:S, errs:errs};
+  });
+  drawExp(res);
+  $("#exp-body").innerHTML = res.map(function(r){
+    var e = r.errs, med = e[Math.floor(e.length/2)], p90 = e[Math.floor(e.length*0.9)], fails = e.filter(function(v){return !isFinite(v)}).length;
+    var show = function(v){ return isFinite(v) ? (v===0 ? "0" : fmt(v,2)) : "∞"; };
+    return '<tr><td><span class="sw" style="display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:4px;background:var('+r.S.col+')"></span>'+r.S.name+'</td><td class="num">'+show(med)+'</td><td class="num">'+show(p90)+'</td><td class="num">'+fails+'</td></tr>';
+  }).join("");
+}
+function drawExp(res){
+  var W=900,H=300,M={l:52,r:16,t:16,b:36}, svg=$("#exp-chart");
+  var fin = []; res.forEach(function(r){ r.errs.forEach(function(e){ if(isFinite(e) && e>0) fin.push(Math.log10(e)); }); });
+  var ymin = Math.floor(Math.min.apply(null, fin.length?fin:[-6])), ymax = Math.max(1, Math.ceil(Math.max.apply(null, fin.length?fin:[0])));
+  var ytop = ymax + 1; // faixa do ∞
+  var sx = function(p){ return M.l + p/100*(W-M.l-M.r); }, sy = function(v){ return H-M.b - (v-ymin)/(ytop-ymin)*(H-M.t-M.b); };
+  var g = '<g class="grid">';
+  for(var y=ymin;y<=ymax;y++) g += '<line x1="'+M.l+'" x2="'+(W-M.r)+'" y1="'+sy(y)+'" y2="'+sy(y)+'"/>';
+  g += '</g><g class="axis">';
+  for(y=ymin;y<=ymax;y++) g += '<text x="'+(M.l-8)+'" y="'+(sy(y)+4)+'" text-anchor="end">10'+sup(y)+'</text>';
+  g += '<text x="'+(M.l-8)+'" y="'+(sy(ytop)+4)+'" text-anchor="end">∞</text>';
+  [0,25,50,75,100].forEach(function(p){ g += '<text x="'+sx(p)+'" y="'+(H-M.b+18)+'" text-anchor="middle">'+p+'%</text>'; });
+  g += '</g><line class="base" x1="'+M.l+'" x2="'+(W-M.r)+'" y1="'+sy(ymin)+'" y2="'+sy(ymin)+'"/>';
+  var yv = function(e){ return !isFinite(e) ? sy(ytop) : (e<=0 ? sy(ymin) : sy(Math.max(ymin, Math.log10(e)))); };
+  var paths = res.map(function(r){
+    var N = r.errs.length, d = "";
+    r.errs.forEach(function(e,i){ var x0 = sx(i/N*100), x1 = sx((i+1)/N*100), yy = yv(e); d += (i? "L":"M")+x0.toFixed(1)+","+yy.toFixed(1)+"L"+x1.toFixed(1)+","+yy.toFixed(1); });
+    return '<path d="'+d+'" fill="none" stroke="var('+r.S.col+')" stroke-width="2" stroke-linejoin="round"/>';
+  }).join("");
+  svg.innerHTML = g + paths + '<text x="14" y="'+(M.t+(H-M.t-M.b)/2)+'" transform="rotate(-90 14 '+(M.t+(H-M.t-M.b)/2)+')" text-anchor="middle" class="lbl">erro relativo</text>'
+    + '<line id="exh" y1="'+M.t+'" y2="'+(H-M.b)+'" stroke="var(--faint)" stroke-dasharray="3 3" visibility="hidden"/><rect id="exhit" x="'+M.l+'" y="'+M.t+'" width="'+(W-M.l-M.r)+'" height="'+(H-M.t-M.b)+'" fill="transparent"/>';
+  $("#exp-legend").innerHTML = res.map(function(r){ return '<span><i style="background:var('+r.S.col+')"></i>'+r.S.name+'</span>'; }).join("");
+  var tip = $("#exp-tip"), wrap = $("#exp-wrap"), hit = $("#exhit");
+  function move(ev){
+    var src = ev.touches ? ev.touches[0] : ev, pt = svg.createSVGPoint(); pt.x = src.clientX; pt.y = src.clientY;
+    var loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    var p = Math.max(0, Math.min(99.9, (loc.x-M.l)/(W-M.l-M.r)*100));
+    $("#exh").setAttribute("x1", sx(p)); $("#exh").setAttribute("x2", sx(p)); $("#exh").setAttribute("visibility","visible");
+    var html = '<b>'+Math.round(p)+'% dos casos</b> têm erro até:<br>';
+    res.forEach(function(r){ var e = r.errs[Math.floor(p/100*r.errs.length)]; html += '<span class="sw" style="background:var('+r.S.col+')"></span>'+r.S.name+': <b>'+(isFinite(e) ? (e===0?'0':fmt(e,2)) : '∞')+'</b><br>'; });
+    tip.innerHTML = html; tip.hidden = false;
+    var wr = wrap.getBoundingClientRect(), tx = src.clientX - wr.left + wrap.scrollLeft + 14;
+    if(tx + tip.offsetWidth > wrap.scrollWidth - 4) tx = src.clientX - wr.left + wrap.scrollLeft - tip.offsetWidth - 14;
+    tip.style.left = tx+"px"; tip.style.top = Math.max(0, src.clientY - wr.top - 20)+"px";
+  }
+  hit.addEventListener("mousemove", move); hit.addEventListener("touchstart", move, {passive:true});
+  hit.addEventListener("touchmove", function(e){ move(e); e.preventDefault(); }, {passive:false});
+  hit.addEventListener("mouseleave", function(){ tip.hidden = true; $("#exh").setAttribute("visibility","hidden"); });
+}
+$$("[data-xn]").forEach(function(b){ b.addEventListener("click",function(){ exp.n=+b.dataset.xn; $$("[data-xn]").forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")}); $("#exp-lut").disabled = exp.n!==16; runExp(); }); });
+["#exp-L","#exp-a","#exp-mixed","#exp-lut"].forEach(function(id){ $(id).addEventListener("change", runExp); });
+$("#exp-run").addEventListener("click", function(){ exp.seed++; runExp(); });
+runExp();
+
+/* ---------- assistente de decisão ---------- */
+var QS = [
+  {id:"impl", q:"Como o grupo vai implementar a Fase 1?", o:[["rtl","Hardware (VHDL/Verilog)"],["sim","Simulador (C++/Python)"]], d:"sim"},
+  {id:"time", q:"Quanto tempo sobra além do mínimo das 40 h?", o:[["low","Pouco"],["some","Algum"]], d:"low"},
+  {id:"goal", q:"O que o relatório deve priorizar?", o:[["paper","Seguir o artigo do AVX10.2 e comparar com IEEE"],["research","Explorar uma ideia nova (LNS)"]], d:"paper"},
+  {id:"ops", q:"Que operações dominam a carga avaliada?", o:[["add","Somas (SpMV, produto escalar)"],["mul","Multiplicações, divisões, raízes"]], d:"add"}
+];
+var ans = {};
+QS.forEach(function(q){ ans[q.id] = store("aoc-takum-q-"+q.id) || q.d; });
+$("#decide").innerHTML = QS.map(function(q){
+  return '<fieldset><legend>'+q.q+'</legend>'+q.o.map(function(o){ var id = "q-"+q.id+"-"+o[0]; return '<label for="'+id+'"><input type="radio" name="q-'+q.id+'" id="'+id+'" value="'+o[0]+'"'+(ans[q.id]===o[0]?' checked':'')+'> '+o[1]+'</label>'; }).join("")+'</fieldset>';
+}).join("");
+function decide(){
+  var s = 0;
+  s += ans.impl==="sim" ? 2 : -2; s += ans.time==="some" ? 1 : 0; s += ans.goal==="research" ? 2 : 0; s += ans.ops==="mul" ? 2 : -1;
+  var out;
+  if(s <= 0) out = '<b>Takum linear.</b> '+(ans.impl==="rtl" ? 'Em RTL, soma e multiplicação reaproveitam o projeto de uma FPU e só o codec muda; a soma logarítmica para T32 exigiria tabelas e interpolação, um projeto à parte. ' : 'Com pouco tempo e carga dominada por somas, a variante linear entrega o que o enunciado pede com menos risco. ')+'Cite a variante logarítmica como trabalho futuro.';
+  else if(s <= 3) out = '<b>Takum linear como implementação principal, e o logarítmico como comparação.</b> '+(ans.impl==="sim" ? 'No simulador a soma logarítmica é só <code>log1p</code>/<code>exp</code>, então dá para rodar o mesmo SpMV nas duas variantes e discutir a diferença no artigo. ' : 'Em hardware, limite o logarítmico a T8/T16, em que as tabelas de Φ são pequenas. ')+'As instruções Zvtakum da Fase 2 ficam iguais; só muda a unidade que as executa.';
+  else out = '<b>Takum logarítmico é uma escolha defensável.</b> É a variante padrão de [2], tem erro máximo menor e multiplicação trivial. Planeje: tabelas de Φ⁺/Φ⁻ com interpolação (e tratamento de Φ⁻ perto de q = 0), conversão IEEE ↔ takum com ln/exp na Fase 3 e um acumulador para <code>vtdot.vv</code>. Mantenha o takum linear como linha de base para comparar.';
+  $("#decide-out").innerHTML = out;
+}
+$("#decide").addEventListener("change", function(e){ if(e.target.name){ var id = e.target.name.slice(2); ans[id] = e.target.value; store("aoc-takum-q-"+id, e.target.value); decide(); } });
+decide();
+
+/* ---------- quizzes ---------- */
+$$(".quiz").forEach(function(q){
+  var ans = +q.dataset.answer, btns = $$(".opts button", q);
+  btns.forEach(function(b,i){ b.addEventListener("click",function(){
+    btns.forEach(function(x,j){ x.classList.remove("right","wrong"); if(j===ans) x.classList.add("right"); });
+    if(i!==ans) b.classList.add("wrong");
+    $(".why", q).hidden = false;
+  });});
+});
+
+/* ---------- copiar ---------- */
+$$("[data-copy]").forEach(function(b){ b.addEventListener("click",function(){
+  var code = $("#"+b.dataset.copy+" code"), text = code.textContent;
+  function done(){ b.textContent = "Copiado"; setTimeout(function(){ b.textContent = "Copiar"; }, 1500); }
+  function fallback(){ var r = document.createRange(); r.selectNodeContents(code); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selecionado: Ctrl+C"; }
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch(e){ fallback(); }
+});});
+
+/* ---------- checklist ---------- */
+var boxes = $$("#checklist input");
+function upd(){
+  var n = boxes.filter(function(b){return b.checked}).length;
+  $("#check-count").textContent = n + " de " + boxes.length + " conceitos";
+  $("#check-meter").style.width = (n/boxes.length*100) + "%";
+}
+boxes.forEach(function(b){
+  if(store("aoc-takum-"+b.id) === "1") b.checked = true;
+  b.addEventListener("change",function(){ store("aoc-takum-"+b.id, b.checked ? "1" : "0"); upd(); });
+});
+upd();
+})();
+</script>
