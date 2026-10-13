@@ -1,22 +1,5 @@
-// =============================================================================
 // takum_vec_alu.v — Unidade vetorial Zvtakum: vtadd.vv, vtsub.vv, vtmul.vv
-// -----------------------------------------------------------------------------
-// Projeto Integrador AOC 2026/02 — Entrega 1
-//
-// Aplica a operação elemento a elemento sobre um registrador vetorial de VLEN
-// bits, com elementos de SEW = 8, 16 ou 32 bits (T8, T16, T32):
-//
-//   vd[i] = vs2[i] (op) vs1[i]     para i < vl
-//   vd[i] = vd_old[i]              para i >= vl   (cauda inalterada)
-//
-//   sew  2'd0 = 8 bits, 2'd1 = 16 bits, 2'd2 = 32 bits
-//   op   2'd0 = vtadd.vv, 2'd1 = vtsub.vv (vs2 - vs1), 2'd2 = vtmul.vv
-//
-// Há uma fileira de ALUs por largura (VLEN/8 de T8, VLEN/16 de T16, VLEN/32 de
-// T32) e um multiplexador por SEW. É a forma mais simples e não a menor em área;
-// máscaras (v0.t), LMUL e CSRs ficam para a integração com o modelo RVV.
-// Elemento 0 nos bits menos significativos (little-endian), como no RVV.
-// =============================================================================
+
 `timescale 1ns/1ps
 
 module takum_vec_alu #(

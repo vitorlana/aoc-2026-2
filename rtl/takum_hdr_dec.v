@@ -1,26 +1,5 @@
-// =============================================================================
-// takum_hdr_dec.v — Decodificador do cabeçalho de 12 bits de um takum LINEAR
-// -----------------------------------------------------------------------------
-// Projeto Integrador AOC 2026/02 — Fase 1
-//
-// Recebe os 12 bits mais significativos de um takum POSITIVO (S = 0) e devolve
-// o número de bits de característica r e o expoente e (= característica c).
-//
-//   h[11]    S  (ignorado: o chamador já negou a palavra se ela era negativa)
-//   h[10]    D  direção  (1: |x| >= 1, 0: |x| < 1)
-//   h[9:7]   R  regime   (3 bits)
-//   h[6:0]   janela onde ficam os r bits de característica C (alinhados à esq.)
-//
-// Fórmulas (Hunhold 2024, Def. 8), reescritas para hardware:
-//   r = D ? R : 7 - R            7 - R em 3 bits = inverter os bits de R
-//   C = h[6:0] >> (7 - r)        os r bits de cima da janela
-//   D = 1:  c = 2^r - 1 + C      =  {1, C} - 1          (0 ... 254)
-//   D = 0:  c = -2^(r+1) + 1 + C = -{1, ~C}             (-255 ... -1)
-// onde {1, C} é o número formado por um bit 1 seguido dos r bits de C.
-//
-// Este módulo NÃO depende de N: é o mesmo para T8, T16, T32 (e T64).
-// É a afirmação central do takum: um único decodificador de 12 bits.
-// =============================================================================
+// takum_hdr_dec.v — Decodificador do cabeçalho de 12 bits de um takum linear
+
 `timescale 1ns/1ps
 
 module takum_hdr_dec (

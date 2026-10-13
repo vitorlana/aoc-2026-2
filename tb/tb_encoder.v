@@ -1,16 +1,5 @@
-// =============================================================================
-// tb_encoder.v — Verifica takum_encoder por PROPRIEDADES (sem codificador de
-// referência), usando só ref_value do modelo:
-//   1. resultado positivo nunca é 0 nem NaR (saturação)
-//   2. trocar o sinal da entrada dá o complemento de 2 da saída
-//   3. acima do maior / abaixo do menor positivo -> satura no maior / menor
-//   4. x fica entre os vizinhos (t-1, t+1) da saída
-//   5. a saída é o vizinho mais próximo (região de arredondamento aritmético;
-//      em T8 só para 2^-15 <= |x| < 2^16, veja o guia §7.5)
-//   6. empates exatos vão para o padrão par (RNE na palavra)
-//   + casos dirigidos (zero, NaR, faixa de expoente)
-//   Opções: +NENC=<quantidade aleatória por tamanho> (padrão 100000)
-// =============================================================================
+// tb_encoder.v - verificacao de propriedades do encoder
+
 `timescale 1ns/1ps
 module enc_check #(parameter N = 16, parameter SEED = 1) ();
     `include "takum_ref.vh"

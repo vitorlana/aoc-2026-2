@@ -1,9 +1,5 @@
-// =============================================================================
-// tb_roundtrip.v — Ida e volta: encoder(decoder(t)) == t
-//   Não precisa de modelo: é o RTL contra ele mesmo. Pega a maioria dos erros
-//   de campo nos dois módulos.
-//   T8 e T16: todos os padrões.  T32: N32 aleatórios (padrão 200000).
-// =============================================================================
+// tb_roundtrip.v - teste de consistencia decodificador -> codificador
+
 `timescale 1ns/1ps
 module rt_check #(parameter N = 16, parameter SEED = 1) ();
     reg  [N-1:0]      t;

@@ -1,10 +1,5 @@
-// =============================================================================
 // tb_decoder.v — Verifica takum_decoder para N = 8, 16 e 32
-//   T8 e T16: todos os padrões.   T32: N32 padrões aleatórios (semente fixa)
-//                                       + casos de borda.
-//   Critério: flags corretas e unpacked_value(saídas) == ref_value(t).
-//   Opções:  +N32=<quantidade>   (padrão 200000)
-// =============================================================================
+
 `timescale 1ns/1ps
 module dec_check #(parameter N = 16, parameter SEED = 1) ();
     `include "takum_ref.vh"

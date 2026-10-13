@@ -1,26 +1,5 @@
-// =============================================================================
-// takum_alu.v — ALU takum linear de N bits: soma, subtração e multiplicação
-// -----------------------------------------------------------------------------
-// Projeto Integrador AOC 2026/02 — Entrega 1
-//
-//   op = 2'd0  y = a + b
-//   op = 2'd1  y = a - b
-//   op = 2'd2  y = a * b
-//
-// Combinacional: takum_decoder (a, b) -> núcleo aritmético -> takum_encoder.
-// O resultado é o arredondamento correto (vizinho mais próximo, empate para o
-// par, na palavra) do valor exato, com saturação: nunca vira 0 nem NaR por
-// estouro. NaR é absorvente em qualquer operação (inclusive 0 * NaR).
-//
-// Núcleo da multiplicação:  sinal = sa ^ sb ; exp = ea + eb ;
-//   significandos {1,fa} * {1,fb} (2(N-4) bits), normaliza se >= 2.
-//
-// Núcleo da soma: ordena por magnitude, alinha o menor com guard/round/sticky
-//   (o que sai do alinhamento vira um único bit sticky), soma ou subtrai,
-//   normaliza (contador de zeros à esquerda) e entrega ao encoder.
-//
-// Parâmetro: N >= 8 (testado com 8, 16 e 32).
-// =============================================================================
+// takum_alu.v - ALU takum (add, sub, mul)
+
 `timescale 1ns/1ps
 
 module takum_alu #(
@@ -47,7 +26,7 @@ module takum_alu #(
     takum_decoder #(.N(N)) u_db (.t(b), .is_zero(zb), .is_nar(nb), .sign(sb_raw), .exp(eb), .frac(fb));
 
     wire is_mul = (op == 2'd2);
-    wire sb     = sb_raw ^ (op == 2'd1);          // subtração = soma com sinal de b invertido
+    wire sb     = sb_raw ^ (op == 2'd1); 
     wire [W-1:0] ma = {1'b1, fa};
     wire [W-1:0] mb = {1'b1, fb};
 
@@ -61,7 +40,6 @@ module takum_alu #(
     wire           m_sign   = sa ^ sb_raw;
 
     // ---- soma / subtração ---------------------------------------------------------
-    // ordem por magnitude: expoente e depois fração (ambos já normalizados)
     wire a_ge_b = ({~ea[8], ea[7:0], fa} >= {~eb[8], eb[7:0], fb});   // expoente com sinal: inverte o MSB
     wire signed [8:0] e_big   = a_ge_b ? ea : eb;
     wire signed [8:0] e_small = a_ge_b ? eb : ea;
@@ -70,7 +48,7 @@ module takum_alu #(
     wire              s_big   = a_ge_b ? sa : sb;
     wire              s_small = a_ge_b ? sb : sa;
 
-    wire [9:0] dist = e_big - e_small;                       // 0 .. 509
+    wire [9:0] dist = e_big - e_small;
     wire [9:0] dist_c = (dist > AW) ? AW10 : dist;
 
     wire [AW-1:0]   a_ext  = {m_big, 3'b000};
@@ -83,15 +61,15 @@ module takum_alu #(
     wire            sub    = s_big ^ s_small;
     wire [AW:0]     sum    = sub ? ({1'b0, a_ext} - {1'b0, b_jam}) : ({1'b0, a_ext} + {1'b0, b_jam});
 
-    // contador de zeros à esquerda (priority encoder sobre AW+1 = N bits)
+    // contador de zeros à esquerda 
     reg [5:0] lz;
     integer i;
     always @* begin
-        lz = AW6 + 6'd1;                                // sum == 0
+        lz = AW6 + 6'd1;                             // sum == 0
         for (i = 0; i <= AW; i = i + 1)
             if (sum[i]) lz = AW6 - i[5:0];
     end
-    wire [AW:0]   s_norm  = sum << lz;                       // bit 1 em AW
+    wire [AW:0]   s_norm  = sum << lz;               // bit 1 em AW
     wire signed [EW-1:0] a_exp = $signed({{2{e_big[8]}}, e_big}) + 11'sd1 - $signed({5'b0, lz});
     wire [N-4:0]  a_frac  = s_norm[AW-1 -: N-3];
     wire          a_stk   = |s_norm[AW-1-(N-3):0];
@@ -108,7 +86,7 @@ module takum_alu #(
                                   .exp(enc_exp), .frac(enc_frac), .sticky(enc_stk), .t(y_core));
 
     // ---- casos especiais ------------------------------------------------------------------
-    wire [N-1:0] b_signed = (op == 2'd1) ? (~b + 1'b1) : b;   // -b, em complemento de 2
+    wire [N-1:0] b_signed = (op == 2'd1) ? (~b + 1'b1) : b;      // -b, em complemento de 2
     assign y = (na | nb)  ? NAR :
                is_mul     ? ((za | zb) ? {N{1'b0}} : y_core) :
                za         ? (zb ? {N{1'b0}} : b_signed) :

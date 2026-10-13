@@ -1,5 +1,6 @@
 // Testbench da takum_alu: compara o RTL com vetores gerados pelo oráculo Python
-// (tb/gen_vectors.py). Formato de cada linha: a b op y (hexadecimal).
+// validacao da alu com vetores externos
+
 `timescale 1ns/1ps
 module tb_alu;
     parameter N = 16;

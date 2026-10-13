@@ -1,17 +1,12 @@
-// =============================================================================
 // takum_ref.vh — Modelo de referência do takum LINEAR (SÓ PARA TESTBENCH)
 // -----------------------------------------------------------------------------
-// Inclua DENTRO de um módulo de testbench:   `include "takum_ref.vh"
-//
-// Escrito de propósito de um jeito DIFERENTE do RTL, direto da Definição 8 de
-// Hunhold (2024), para que um confira o outro:
+// Escrito de um jeito diferentte do RTL,  usando a Definição 8 de Hunhold (2024), para que um confira o outro:
 //   * não nega a palavra: usa a fórmula do artigo também para negativos,
 //       e = (-1)^S (c + S),  valor = ((1 - 3S) + f) * 2^e
 //   * calcula c com 2^r - 1 + C e -2^(r+1) + 1 + C (o RTL usa {1,C}-1 e -{1,~C})
 //   * usa real, $pow e inteiros: nada disto é sintetizável.
 //
-// Um real é um double (53 bits de fração, expoente até ±1023). Todo takum de
-// até 32 bits (≤ 27 bits de fração, expoente -255..254) cabe nele EXATAMENTE,
+// Um real é um double (53 bits de fração, expoente até ±1023). Todo takum de até 32 bits (≤ 27 bits de fração, expoente -255..254) cabe nele com exatidão,
 // então comparações com == são legítimas.
 // =============================================================================
 
@@ -50,8 +45,6 @@ task ref_fields;
 endtask
 
 // Valor real de um takum de n bits (0.0 para zero e para NaR: use ref_is_nar)
-// (em Verilog uma função não pode chamar task, por isso os campos são
-//  recalculados aqui da mesma forma que em ref_fields)
 function real ref_value;
     input [31:0] t;
     input integer n;

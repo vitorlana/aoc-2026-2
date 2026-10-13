@@ -1,9 +1,5 @@
-// =============================================================================
-// tb_ref.v — Testa o PRÓPRIO modelo de referência antes de usá-lo como gabarito
-//   * valores conhecidos (revisão bibliográfica, livro de Gustafson §13.4)
-//   * negação: valor(-t) == -valor(t)           (T8 e T16, todos os padrões)
-//   * monotonicidade: valor cresce com o inteiro com sinal (T8 e T16)
-// =============================================================================
+// takum_ref.vh - modelo comportamental em ponto flutuante para verificacao
+
 `timescale 1ns/1ps
 module tb_ref;
     `include "takum_ref.vh"
@@ -37,13 +33,13 @@ module tb_ref;
         expect_val(32'hBF,  8, -1.125);
         expect_val(32'h7F,  8, $pow(2.0, 239));
         expect_val(32'h01,  8, $pow(2.0, -239));
-        expect_val(32'h30,  8, 0.125);          // exercício b do guia
-        expect_val(32'hB0,  8, -8.0);           // exercício c
-        expect_val(32'h68,  8, $pow(2.0, 31));  // exercício d
+        expect_val(32'h30,  8, 0.125);         
+        expect_val(32'hB0,  8, -8.0);           
+        expect_val(32'h68,  8, $pow(2.0, 31));  
         // T16
         expect_val(32'h4000, 16, 1.0);
-        expect_val(32'h4A00, 16, 3.0);          // exercício e
-        expect_val(32'h3400, 16, 0.25);         // exercício f
+        expect_val(32'h4A00, 16, 3.0);         
+        expect_val(32'h3400, 16, 0.25);         
         expect_val(32'h7FFF, 16, (1.0 + 15.0/16.0) * $pow(2.0, 254));
         expect_val(32'h0001, 16, (1.0 + 1.0/16.0) * $pow(2.0, -255));
         // T32

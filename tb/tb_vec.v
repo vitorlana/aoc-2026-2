@@ -1,5 +1,6 @@
-// Testbench do takum_vec_alu (VLEN = 64): compara com vetores do oráculo Python.
-// Formato de cada linha: vs2 vs1 vd_old op vl vd (hexadecimal).
+// tb_vec.v - validacao da alu vetorial contra vetores de teste
+// Formato de cada linha: vs2 vs1 vd_old op vl vd (hexadecimal)
+
 `timescale 1ns/1ps
 module tb_vec;
     parameter SEW = 8;

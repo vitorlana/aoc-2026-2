@@ -1,5 +1,3 @@
-# Fase 1 — Revisão Bibliográfica
-
 **Projeto Integrador AOC 2026/02 — Formato aritmético Takum na Extensão Vetorial RISC-V (RVV)**
 
 > **Para quem é este documento.** Para quem estudou sistemas digitais há algum tempo
