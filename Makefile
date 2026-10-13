@@ -10,6 +10,9 @@
 #   make roundtrip   só a ida e volta
 #   make lint        Verilator --lint-only -Wall para N = 8, 16, 32
 #   make synth       Yosys: células genéricas e LUT6 para N = 8, 16, 32
+#   make demo        simula tb_demo e grava build/demo.vcd (formas de onda)
+#   make waves       make demo + abre no GTKWave já com os sinais arrumados
+#   make schematic   desenha o circuito (Yosys + netlistsvg, ou Graphviz) em build/sch/
 #   make clean       apaga build/
 #
 #   Mais casos aleatórios:  make test N32=1000000 NENC=500000
@@ -34,7 +37,7 @@ NENC     ?= 100000
 IVFLAGS  := -g2005 -Wall -I $(TBDIR)
 
 .SECONDARY:
-.PHONY: all test ref decoder encoder roundtrip alu vec lint synth clean
+.PHONY: all test ref decoder encoder roundtrip alu vec lint synth demo waves schematic clean
 
 all: test
 
@@ -110,6 +113,36 @@ synth: | $(BUILD)
 	    luts=$$($(YOSYS) -p "read_verilog $(RTL); $$par synth -flatten -top $$top; abc -lut 6; opt_clean; stat" | awk -f tb/ycells.awk); \
 	    printf "%-14s %-9s células=%-5s LUT6=%s\n" $$top "$$label" $$cells $$luts | tee -a $(BUILD)/synth.txt; \
 	  done; \
+	done
+
+# ---- formas de onda ----------------------------------------------------------
+GTKWAVE  ?= gtkwave
+
+demo: $(BUILD)/tb_demo.vvp
+	$(VVP) -n $< > /dev/null
+	@echo "VCD gerado: $(BUILD)/demo.vcd"
+	@echo "Abra com:   $(GTKWAVE) $(BUILD)/demo.vcd -S tb/demo.tcl"
+
+waves: demo
+	$(GTKWAVE) $(BUILD)/demo.vcd -S tb/demo.tcl &
+
+# ---- esquemáticos -------------------------------------------------------------
+# Nível RTL (prep): somadores, deslocadores, muxes e portas, como no código.
+# SCH_N escolhe o tamanho (padrão 8, o mais legível).
+SCH_N      ?= 8
+NETLISTSVG ?= netlistsvg
+
+schematic: | $(BUILD)
+	@mkdir -p $(BUILD)/sch
+	@for top in takum_hdr_dec takum_decoder takum_encoder; do \
+	  if [ $$top = takum_hdr_dec ]; then par=""; else par="chparam -set N $(SCH_N) $$top;"; fi; \
+	  if command -v $(NETLISTSVG) >/dev/null; then \
+	    $(YOSYS) -q -p "read_verilog $(RTL); $$par prep -top $$top; opt_clean -purge; write_json $(BUILD)/sch/$$top.json" && \
+	    $(NETLISTSVG) $(BUILD)/sch/$$top.json -o $(BUILD)/sch/$$top.svg && echo "$(BUILD)/sch/$$top.svg"; \
+	  else \
+	    $(YOSYS) -q -p "read_verilog $(RTL); $$par prep -top $$top; opt_clean -purge; show -format svg -prefix $(BUILD)/sch/$$top" && \
+	    echo "$(BUILD)/sch/$$top.svg (Graphviz; instale netlistsvg para um desenho mais limpo)"; \
+	  fi; \
 	done
 
 clean:
